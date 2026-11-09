@@ -16,7 +16,7 @@ import type {
 } from "../../firmware/adapter.ts"
 import { MachineError, abortError } from "../errors.ts"
 import { PartedCompletion } from "../parted-completion.ts"
-import { freshStatus, requireAdmission } from "./context.ts"
+import { freshDiagnosticStatus, requireAdmission } from "./context.ts"
 import type { OperationContext } from "./context.ts"
 
 const STEP_MS = 10_000
@@ -269,7 +269,7 @@ async function preflight(context: OperationContext): Promise<Telemetry> {
   )
   if (!(await report))
     throw new MachineError("refused", "Home all reported axes before Run.")
-  const telemetry = await freshStatus(
+  const telemetry = await freshDiagnosticStatus(
     context,
     "Timed out waiting for fresh device status. No play command was sent."
   )
