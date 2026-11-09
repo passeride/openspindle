@@ -53,6 +53,12 @@ AppImage as the OpenSpindle program.
 4. **Check:** play the program back on the **Job** tab.
 5. **Run:** once the run checklist passes. **Machine › Stop** (⌘. on macOS, Ctrl+. on Windows) stops at any time.
 
+### SpaceMouse navigation
+
+OpenSpindle detects compatible 3Dconnexion SpaceMouse and SpaceNavigator controllers in **Prepare** and **Job**. Move the cap left, right, up or down to pan, push or pull it to zoom, and tilt or twist it to orbit the bed. The 3D view keeps Z pointing up. Input is limited to the work view while the app is in focus.
+
+The controller must be available to the app as a multi-axis HID device over USB or a receiver. On Linux, the logged-in user needs access to its `hidraw` device. The app reads the motion reports directly, without loading a 3DxWare profile.
+
 ## Status and safety
 
 Machine behaviour follows the source of [Makera's Z1 firmware](https://github.com/MakeraInc/MakeraZ1Firmware/tree/b3a2e26a9eaa2b01358f74ccdef549b993a08175) and is tested against a simulator; on a Z1 Pro, uploads and their read-back are verified. Not yet verified on a real Z1:
