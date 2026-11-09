@@ -39,6 +39,12 @@ OpenSpindle is a desktop app for preparing, checking and running jobs on a Maker
 
 **Windows:** download `OpenSpindle-Setup-<version>.exe` from the [latest release](../../releases/latest) and run it: it installs OpenSpindle for your user, without administrator rights, and starts it. The installer is for x64 PCs and runs on Windows on Arm too. It is not signed yet, so Windows warns before running it: choose **More info**, then **Run anyway**. Allow OpenSpindle through the firewall when Windows asks, or it does not find machines on the network; entering a machine's IP address works either way.
 
+
+**Linux (x64):** download the AppImage from the repository's release or a
+[Windows and Linux packages build](docs/releasing.md#packages-on-a-fork).
+Mark it executable and open it. For FreeCAD handoff, select that executable
+AppImage as the OpenSpindle program.
+
 ## Quick start
 
 1. **Connect:** click the device card in **Prepare** and choose your Z1, or enter its IP address.
