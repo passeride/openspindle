@@ -430,6 +430,10 @@ export const makeraRules: FirmwareRules = {
       return "Stop the spindle before starting a program."
     if (telemetry.laserMode !== false)
       return "Run requires the device to report milling mode."
+    if (telemetry.toolSetterTriggered !== false)
+      return telemetry.toolSetterTriggered === true
+        ? "The tool setter is triggered. Release it and inspect the sensor before Run."
+        : "The tool-setter state is unknown. Wait for a fresh diagnostic report before Run."
     if (telemetry.bedCleanAuto === null)
       return "The device does not report its bed-clean mode; job completion cannot be verified."
     return null
