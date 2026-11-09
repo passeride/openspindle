@@ -27,7 +27,7 @@ const atcZ1 = { model: "Z1", atc: true }
 const toolChange = prepareMakeraProgram("M5\nT2 M6\nM3 S12000\n")
 
 describe("tool-setter safety", () => {
-  test("Run and manual spindle start require an explicitly released tool setter", () => {
+  test("Run and spindle start require the tool setter released", () => {
     assert.equal(makeraRules.run(ready()), null)
     assert.equal(
       makeraRules.command({ type: "spindleStart", rpm: 10000 }, ready()),
@@ -72,7 +72,7 @@ describe("tool-setter safety", () => {
     )
   })
 
-  test("an already forgotten tool, automatic changer, or no first M6 needs no reset", () => {
+  test("no reset for forgotten tool, ATC, or program without M6", () => {
     assert.equal(
       toolResetForRun(
         makeraAdapter.job,
