@@ -38,10 +38,7 @@ describe("tool-change spindle interlock", () => {
   })
 
   test("allows spindle start on a following line after tool change", () => {
-    assert.deepEqual(sent("T2 M6", "M3 S12000"), [
-      "T2 M6",
-      "M3 S12000",
-    ])
+    assert.deepEqual(sent("T2 M6", "M3 S12000"), ["T2 M6", "M3 S12000"])
   })
 })
 
