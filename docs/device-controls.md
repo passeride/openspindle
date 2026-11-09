@@ -108,6 +108,8 @@ The Z1's alarms (`Z1_ALARMS`, `src/domain/fixtures/makera-z1/alarms.ts`) are its
 
 ## Camera
 
+On **Device** and **Job**, the camera's fullscreen button also returns it to its previous size. **Esc** leaves fullscreen too. During Run setup, upload and readback verification, OpenSpindle closes the live stream and keeps the last frame visible with a pause label. An open feed reconnects after verification and setup, or if setup fails or is stopped. A feed stopped by the user stays off.
+
 The machine process opens `ws://<host>:82/ws_video`, sends `start_stream` and forwards binary JPEG frames (at most 4 MiB, SOI/EOI checked, 8 s connect and 15 s frame timeouts) to subscribers, over the page's own port to it. The renderer opens no sockets of its own.
 
 Each frame is shown at its own size. The machine's configuration sets the stream's size: `*mainboard.video_stream_framesize` numbers an ESP32 camera frame size as Espressif's camera driver does, 10 being 640 × 480 and 13 being 1280 × 720. A size of another shape than 4:3 is the middle of the camera's whole picture, as the driver crops it: a wider one loses the top and bottom, a narrower one the sides. Reading the configuration gives the size (`FirmwareConfiguration.cameraPicture`), which the simulated camera follows (below).
@@ -123,6 +125,8 @@ Makera stores this file at `/sd/config.txt`. Reads use the B0–B4 download prot
 The Z1 simulator provides a representative configuration file independent of real-machine data. Saves persist across reconnects until the simulator exits; its `config-get sd` and anchor writes use the same saved file. Its `config-set sd` writes as the firmware does: over the first line of the key, from its start, when the line has room (else `not enough space to overwrite existing key/value`), or on a new line at the end. It sets the camera stream's frame size as a Z1's does (`*mainboard.video_stream_framesize 10`), which only the simulated camera's shape follows. Its motion settings, anchor values and vacuum default load on simulator reset; saving a vacuum default leaves the current output and running default unchanged. The simulator's checksum challenge, placeholder checksum and corrupt-upload options also apply to configuration transfers.
 
 ## Protocol trace and console
+
+**Device › Tool** shows a red indicator when the fixed tool setter reports **Triggered**. It shows **Released** when the input is clear and **Unknown** when recent diagnostics are unavailable. On the Z1, the fixed setter is the second value in the diagnostic reply's `P` field.
 
 The controller keeps the recent exchange with the device in a bounded ring (about 20,000 entries across connections): every frame sent, every status report and reply line with its classification, file transfer blocks summarised by size only (received short text payloads, such as a cancel's reason, also shown), and notes for connecting, disconnecting, Stop and job phase changes. **Help › Export Protocol Trace…** has the main process ask the machine process for it and save it as text, so it works even when the window is unresponsive. It is the evidence to attach when a job's completion, a pause or a verification behaves differently on a real machine than described here.
 
