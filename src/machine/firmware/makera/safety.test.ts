@@ -50,8 +50,9 @@ describe("tool-setter safety", () => {
       manualZ1,
       ready()
     )
-    assert.equal(reset?.frame.payload, "M493.2 T-1")
-    assert.equal(reset?.applied(ready({ tool: -1 })), true)
+    assert.ok(reset)
+    assert.equal(reset.frame.payload, "M493.2 T-1")
+    assert.equal(reset.applied(ready({ tool: -1 })), true)
   })
 
   test("Keep tool cannot bypass an M6 and its calibration", () => {
