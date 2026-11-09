@@ -17,10 +17,12 @@ type InputReport = Event & {
 type Axes = readonly [number, number, number]
 const REST: Axes = [0, 0, 0]
 const REPORT_TIMEOUT = 120
+const WHEEL_GUARD_MS = 60
 const listeners = new Set<() => void>()
 let watching = false
 let translation = { axes: REST, time: -Infinity }
 let rotation = { axes: REST, time: -Infinity }
+let foreAftMotionAt = -Infinity
 
 /** Ignore idle jitter and bound the speed even if a device reports out-of-range values. */
 function axis(value: number): number {
@@ -36,6 +38,7 @@ function readAxes(data: DataView, offset: number): Axes {
 function reset() {
   translation = { axes: REST, time: -Infinity }
   rotation = { axes: REST, time: -Infinity }
+  foreAftMotionAt = -Infinity
 }
 
 function onReport(event: Event) {
@@ -46,14 +49,24 @@ function onReport(event: Event) {
   // Devices using split reports send rotation in report 2. Buttons are ignored.
   if (reportId === 1) {
     translation = { axes: readAxes(data, 0), time }
-    if (data.byteLength >= 12) rotation = { axes: readAxes(data, 6), time }
+    if (translation.axes[1]) foreAftMotionAt = time
+    if (data.byteLength >= 12) recordRotation(data, 6, time)
   } else if (reportId === 2) {
-    rotation = { axes: readAxes(data, 0), time }
+    recordRotation(data, 0, time)
   } else return
   const { x, y, z, pitch, yaw } = spaceMouseMotion(time)
   if (!(x || y || z || pitch || yaw)) return
   for (const listener of listeners) listener()
 }
+
+function recordRotation(data: DataView, offset: number, time: number) {
+  rotation = { axes: readAxes(data, offset), time }
+  if (rotation.axes[0]) foreAftMotionAt = time
+}
+
+/** Driver-emulated wheel events lack a source ID. Match a recent fore/aft push or tilt. */
+export const nearSpaceMouseForeAftMotion = (now: number) =>
+  now - foreAftMotionAt < WHEEL_GUARD_MS
 
 function watch(hid: Hid) {
   let device: Device | null = null

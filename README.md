@@ -55,7 +55,9 @@ AppImage as the OpenSpindle program.
 
 ### SpaceMouse navigation
 
-OpenSpindle detects compatible 3Dconnexion SpaceMouse and SpaceNavigator controllers in **Prepare** and **Job**. Move the cap left, right, up or down to pan, push or pull it to zoom, and tilt or twist it to orbit the bed. The 3D view keeps Z pointing up. Input is limited to the work view while the app is in focus.
+OpenSpindle detects compatible 3Dconnexion SpaceMouse and SpaceNavigator controllers in **Prepare** and **Job**. Set **Settings › General › SpaceMouse zoom direction** to **Forward / backward** (the default) or **Up / down**. The other direction pans vertically. Tilt or twist the cap to orbit the bed. The 3D view keeps Z pointing up and responds while the app is in focus.
+
+The mouse wheel zooms the work view. Wheel events that arrive during or shortly after a forward or backward SpaceMouse push or tilt are ignored in the work view to reduce driver-emulated scrolling. This also affects wheel input from a regular mouse if both devices are used at the same time.
 
 The controller must be available to the app as a multi-axis HID device over USB or a receiver. On Linux, the logged-in user needs access to its `hidraw` device. The app reads the motion reports directly, without loading a 3DxWare profile.
 

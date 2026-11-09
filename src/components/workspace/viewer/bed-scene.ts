@@ -9,7 +9,12 @@ import { kitForSetup } from "@/domain/fixtures/catalog"
 import { pictureFov } from "@/domain/fixtures/fixture-kit"
 import type { MachineCamera } from "@/domain/fixtures/fixture-kit"
 import type { Point3 } from "@/domain/nc/gcode"
-import { observeSpaceMouse, spaceMouseMotion } from "@/platform/spacemouse"
+import { spaceMouseZoomAxis } from "@/lib/spacemouse-preferences"
+import {
+  nearSpaceMouseForeAftMotion,
+  observeSpaceMouse,
+  spaceMouseMotion,
+} from "@/platform/spacemouse"
 import type {
   ViewerGhost,
   ViewerPlate,
@@ -324,6 +329,10 @@ export class BedScene {
     canvas.addEventListener("pointercancel", this.pointerCancel)
     canvas.addEventListener("pointermove", this.pointerMove)
     canvas.addEventListener("pointerleave", this.pointerLeave)
+    canvas.addEventListener("wheel", this.guardSpaceMouseWheel, {
+      capture: true,
+      passive: false,
+    })
     if (this.arranger) window.addEventListener("keydown", this.keyDown)
     this.stopSpaceMouse = observeSpaceMouse(this.stage.invalidate)
   }
@@ -510,6 +519,7 @@ export class BedScene {
     canvas.removeEventListener("pointercancel", this.pointerCancel)
     canvas.removeEventListener("pointermove", this.pointerMove)
     canvas.removeEventListener("pointerleave", this.pointerLeave)
+    canvas.removeEventListener("wheel", this.guardSpaceMouseWheel, true)
     window.removeEventListener("keydown", this.keyDown)
     this.controls.dispose()
     for (const view of this.views.values()) view.dispose()
@@ -583,6 +593,20 @@ export class BedScene {
     return this.machineCamera ? this.lens : this.camera
   }
 
+  /** Keep the wheel from reaching OrbitControls when the SpaceMouse driver echoes motion. */
+  private readonly guardSpaceMouseWheel = (event: WheelEvent) => {
+    if (
+      !this.controls.enabled ||
+      this.machineCamera ||
+      event.ctrlKey ||
+      !event.deltaY ||
+      !nearSpaceMouseForeAftMotion(performance.now())
+    )
+      return
+    event.preventDefault()
+    event.stopImmediatePropagation()
+  }
+
   /** Move the work view, using the same orbit, pan and zoom limits as mouse navigation. */
   private moveSpaceMouse(): boolean {
     const now = performance.now()
@@ -604,11 +628,14 @@ export class BedScene {
     this.spaceMouseFrame = now
     if (pitch) this.controls.rotateUp(pitch * 1.8 * seconds)
     if (yaw) this.controls.rotateLeft(yaw * 1.8 * seconds)
+    const verticalZoom = spaceMouseZoomAxis() === "vertical"
+    const panY = verticalZoom ? y : z
+    const zoomAxis = verticalZoom ? z : y
     const pan = this.stage.canvas.clientHeight * 0.75 * seconds
-    if (x || z) this.controls.pan(x * pan, z * pan)
-    if (y) {
+    if (x || panY) this.controls.pan(x * pan, panY * pan)
+    if (zoomAxis) {
       const zoom = THREE.MathUtils.clamp(
-        this.camera.zoom * Math.exp(-y * 2 * seconds),
+        this.camera.zoom * Math.exp(-zoomAxis * 2 * seconds),
         this.controls.minZoom,
         this.controls.maxZoom
       )
