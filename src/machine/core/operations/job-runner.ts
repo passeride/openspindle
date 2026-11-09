@@ -163,13 +163,7 @@ export async function prepareAndStart(
     if (!initialIdentity)
       throw new MachineError("connection-lost", "The device is disconnected.")
     // Refuse a dangerous Keep tool request before any file is uploaded.
-    toolResetForRun(
-      job,
-      program,
-      initialIdentity,
-      telemetry,
-      request.keepTool
-    )
+    toolResetForRun(job, program, initialIdentity, telemetry, request.keepTool)
     hooks.bedCleanBefore(job.bedClean(telemetry))
     const assists = partAssists(
       request.assists,
