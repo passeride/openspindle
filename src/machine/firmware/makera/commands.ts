@@ -355,6 +355,10 @@ export const makeraRules: FirmwareRules = {
       case "spindleStart":
         if (telemetry.estop !== false)
           return "Waiting for the device to report a released emergency stop."
+        if (telemetry.toolSetterTriggered !== false)
+          return telemetry.toolSetterTriggered === true
+            ? "The tool setter is triggered. Release it and inspect the sensor before starting the spindle."
+            : "The tool-setter state is unknown. Wait for a fresh diagnostic report before starting the spindle."
         if (!validTool(telemetry.tool))
           return "The device must report a cutting tool before starting the spindle."
         // A running spindle without motion accepts a new target speed.
