@@ -12,6 +12,7 @@ import { formatMillimetres } from "@/domain/geometry/millimetres"
 import { parseGCode } from "@/domain/nc/gcode"
 import type { Point3 } from "@/domain/nc/gcode"
 import type { Plate } from "@/domain/plate/plate"
+import { workOriginOnMachine } from "@/domain/plate/work-origin"
 import type { Tool } from "@/domain/tools/tool"
 import { toolRuleSubjects } from "@/domain/tools/tool-table"
 import { machineId } from "@/machine/contract"
@@ -93,10 +94,13 @@ export function checkToolSetter({
     machine.y - work.y - anchorY,
     setup.workOrigin[2],
   ]
+  const programOrigin = workOriginOnMachine(plate.setup)
+    ? setup.workOrigin
+    : workOrigin
   const setter: Point3 = [
-    SETTER_FROM_ANCHOR[0] - workOrigin[0],
-    SETTER_FROM_ANCHOR[1] - workOrigin[1],
-    SETTER_TOP - workOrigin[2] + SETTER_MARGIN,
+    SETTER_FROM_ANCHOR[0] - programOrigin[0],
+    SETTER_FROM_ANCHOR[1] - programOrigin[1],
+    SETTER_TOP - programOrigin[2] + SETTER_MARGIN,
   ]
   const path = parseGCode(
     prepared.text,
@@ -104,8 +108,12 @@ export function checkToolSetter({
     kit.firmware.preview({
       ...setup,
       anchors: liveAnchors,
-      workOrigin,
-      start: [work.x, work.y, work.z],
+      workOrigin: programOrigin,
+      start: [
+        work.x + workOrigin[0] - programOrigin[0],
+        work.y + workOrigin[1] - programOrigin[1],
+        work.z,
+      ],
       units,
       absolute,
       ...(keptTool !== null && { tool: keptTool }),
