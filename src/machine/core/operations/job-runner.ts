@@ -1,5 +1,6 @@
 import { DEVICE_ASSISTS, partText, programParts } from "../../contract/index.ts"
 import type {
+  CheckedStart,
   Identity,
   JobState,
   PlateAssists,
@@ -18,7 +19,7 @@ import type {
 } from "../../firmware/adapter.ts"
 import { MachineError, abortError } from "../errors.ts"
 import { PartedCompletion } from "../parted-completion.ts"
-import { freshStatus, requireAdmission } from "./context.ts"
+import { freshDiagnosticStatus, requireAdmission } from "./context.ts"
 import type { OperationContext } from "./context.ts"
 
 const STEP_MS = 10_000
@@ -39,6 +40,8 @@ const START_MS = 8_000
 
 export type JobRunnerHooks = {
   readonly md5: (bytes: Uint8Array) => string
+  /** Suspends camera traffic and returns an idempotent resume callback. */
+  readonly pauseCamera: () => () => void
   readonly update: (patch: Partial<JobState>) => void
   /** From here on the controller feeds statuses and unclaimed lines to the tracker. */
   readonly attach: (tracker: PartedCompletion) => void
@@ -157,6 +160,7 @@ export async function prepareAndStart(
     context,
     parts.reduce((total, part) => total + preparationMs(part.bytes), 0)
   )
+  const resumeCamera = hooks.pauseCamera()
   try {
     let telemetry = await preflight(scoped)
     const initialIdentity = session.identity
@@ -164,6 +168,7 @@ export async function prepareAndStart(
       throw new MachineError("connection-lost", "The device is disconnected.")
     // Refuse a dangerous Keep tool request before any file is uploaded.
     toolResetForRun(job, program, initialIdentity, telemetry, request.keepTool)
+    verifyCheckedStart(request.checkedStart, telemetry)
     hooks.bedCleanBefore(job.bedClean(telemetry))
     const assists = partAssists(
       request.assists,
@@ -190,6 +195,7 @@ export async function prepareAndStart(
       )
     }
     telemetry = await preflight(scoped)
+    verifyCheckedStart(request.checkedStart, telemetry)
     if (job.assistPlan(assists, telemetry).length)
       throw new MachineError(
         "refused",
@@ -216,6 +222,7 @@ export async function prepareAndStart(
     const tracker = new PartedCompletion(program, (part, bedClean) =>
       job.createCompletion(part, bedClean, () => clock.now())
     )
+    resumeCamera()
     await play(
       scoped,
       tracker,
@@ -225,6 +232,7 @@ export async function prepareAndStart(
       hooks
     )
   } finally {
+    resumeCamera()
     release()
   }
 }
@@ -302,12 +310,40 @@ async function preflight(context: OperationContext): Promise<Telemetry> {
   )
   if (!(await report))
     throw new MachineError("refused", "Home all reported axes before Run.")
-  const telemetry = await freshStatus(
+  const telemetry = await freshDiagnosticStatus(
     context,
     "Timed out waiting for fresh device status. No play command was sent."
   )
   requireAdmission(context, { key: "run" }, telemetry)
   return telemetry
+}
+
+/** The geometry checked before Run must still be current after transfer. */
+function verifyCheckedStart(
+  checked: CheckedStart | undefined,
+  telemetry: Telemetry
+) {
+  if (!checked) return
+  const near = (
+    expected: CheckedStart["machine"],
+    actual: Telemetry["machine"]
+  ) =>
+    actual &&
+    Math.hypot(
+      actual.x - expected.x,
+      actual.y - expected.y,
+      actual.z - expected.z
+    ) <= 0.05
+  if (
+    !near(checked.machine, telemetry.machine) ||
+    !near(checked.work, telemetry.work) ||
+    checked.units !== telemetry.units ||
+    (checked.keptTool !== null && checked.keptTool !== telemetry.tool)
+  )
+    throw new MachineError(
+      "refused",
+      "The machine position, work offset, units or kept tool changed after the clearance check. Review the setup and run again. The program was not started."
+    )
 }
 
 /** Sends a setting, then awaits its acknowledgement and a newer status showing it applied. */
@@ -377,6 +413,7 @@ async function transferProgram(
   const release = session.suspendPolling()
   const { clock } = context
   let stall: ReturnType<typeof clock.setTimeout> | null = null
+  let readback: ReturnType<typeof clock.setTimeout> | null = null
   const watch = () => {
     clock.clearTimeout(stall)
     stall = clock.setTimeout(() => {
@@ -400,6 +437,7 @@ async function transferProgram(
             : "ignored"
         if (event.kind !== "transfer") return "ignored"
         watch()
+        const stage = protocol.stage
         let frames
         try {
           frames = protocol.receive(event.frame)
@@ -411,7 +449,15 @@ async function transferProgram(
             ),
           }
         }
-        for (const frame of frames) session.send(frame)
+        const delay = protocol.readbackDelayMs ?? 0
+        if (stage === "upload" && protocol.stage === "readback" && delay > 0) {
+          readback = clock.setTimeout(() => {
+            if (context.signal.aborted || session.closed) return
+            for (const frame of frames) session.send(frame)
+          }, delay)
+        } else {
+          for (const frame of frames) session.send(frame)
+        }
         progress()
         // A part sent next must not meet this transfer's last acknowledgement.
         return protocol.finished ? { done: undefined } : "consumed"
@@ -429,6 +475,7 @@ async function transferProgram(
     throw error
   } finally {
     clock.clearTimeout(stall)
+    clock.clearTimeout(readback)
     hooks.transferring(null)
     release()
   }

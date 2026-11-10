@@ -17,6 +17,7 @@ import { QUICK_FIX_LABELS } from "@/features/prepare/quick-fix"
 import type { MachineSnapshot } from "@/machine/contract"
 import type { PrepareSearch } from "@/routes/_workspace/prepare"
 import type { ProgramCheck } from "./program-check"
+import type { ToolSetterCheck } from "./tool-setter-check"
 
 /** What a check offers to resolve it: a Prepare or Device link, or a machine action. */
 export type RunFix =
@@ -26,6 +27,7 @@ export type RunFix =
       readonly search: PrepareSearch
     }
   | { readonly kind: "device"; readonly label: string }
+  | { readonly kind: "program-line"; readonly line: number }
   | { readonly kind: "read-anchors"; readonly label: string }
   /** Opens the height map the machine applies, with its work Z. */
   | { readonly kind: "height-map"; readonly label: string }
@@ -72,6 +74,7 @@ export type RunContext = {
   readonly designRules: DesignRuleCheck | null
   readonly snapshot: MachineSnapshot
   readonly check: ProgramCheck
+  readonly toolSetter: ToolSetterCheck
 }
 
 /** One row of the Run checklist: a named condition of Run, as it shows for the context. */
@@ -332,6 +335,31 @@ export const machineReady: RunCheckRow = {
   },
 }
 
+const toolSetterClearance: RunCheckRow = {
+  id: "tool-setter-clearance",
+  label: "Tool setter clearance",
+  show: ({ toolSetter }) => {
+    switch (toolSetter.status) {
+      case "pass":
+        return pass()
+      case "pending":
+        return pending(toolSetter.reason)
+      case "anchors":
+        return fail(toolSetter.reason, {
+          kind: "read-anchors",
+          label: "Read anchors",
+        })
+      case "incomplete":
+        return fail(toolSetter.reason, OPEN_PREPARE)
+      case "collision":
+        return fail(toolSetter.reason, {
+          kind: "program-line",
+          line: toolSetter.line,
+        })
+    }
+  },
+}
+
 /** In the order a user resolves them: machine access, the plate, then the machine itself. */
 export const RUN_CHECKLIST: readonly RunCheckRow[] = [
   deviceConnected,
@@ -342,6 +370,7 @@ export const RUN_CHECKLIST: readonly RunCheckRow[] = [
   matchesMachine,
   programTransfers,
   machineReady,
+  toolSetterClearance,
 ]
 
 export type RunCheck = {
