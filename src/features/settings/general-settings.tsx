@@ -47,7 +47,7 @@ const fontOptions = (role: FontRole) =>
 const simulatorHint = (host: string, port: number) =>
   `A simulated Makera Z1 that OpenSpindle runs at ${host}:${port}, to try jobs without a machine. Connect to it as to a machine.`
 
-/** Settings › General: how the app looks, and its simulated Z1. Changes apply at once. */
+/** Settings › General: appearance and the simulated Z1. Changes apply at once. */
 export function GeneralSettings() {
   const { appearance, setAppearance, fonts, setFont, saveError } =
     useAppearance()

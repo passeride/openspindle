@@ -1,4 +1,5 @@
 import { useMemo } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { limitsFor, planFor } from "@/app/job/plan-store"
 import {
@@ -18,17 +19,22 @@ import { rulesOf } from "@/domain/rules/rules"
 import { runSubjects } from "@/domain/rules/stages"
 import { usePlateDesignRuleCheck } from "@/features/design-rules/design-rule-check"
 import {
+  isFresh,
   isSimulator,
   machineId,
   runRules,
   toDisplayName,
 } from "@/machine/contract"
-import type { Availability, Telemetry } from "@/machine/contract"
+import type {
+  Availability,
+  MachineSnapshot,
+  Telemetry,
+} from "@/machine/contract"
 import type { Tool } from "@/domain/tools/tool"
 import {
+  machineKeys,
   useCachedConfiguration,
   useDismissJob,
-  useFreshTelemetry,
   useMachineCommand,
   useMachineSnapshot,
   useRunProgram,
@@ -162,8 +168,8 @@ function tipInProgram(plate: Plate, telemetry: Telemetry | null) {
 
 export function useRunJob() {
   const workspace = useWorkspaceStore()
+  const client = useQueryClient()
   const { connection } = useMachineSnapshot()
-  const telemetry = useFreshTelemetry()
   const { device } = connection
   const configuration = useCachedConfiguration(connection.id)
   const run = useRunProgram()
@@ -173,15 +179,25 @@ export function useRunJob() {
     plate: Plate,
     compiled: CompiledPlate,
     library: readonly Tool[],
-    keptTool: number | null = null
+    keptTool: number | null
   ) => {
+    const live = client.getQueryData<MachineSnapshot>(machineKeys.snapshot)
+    if (
+      !live ||
+      live.connection.id !== connection.id ||
+      !live.availability.run.allowed
+    ) {
+      toast.error("The machine is no longer ready to run this program.")
+      return
+    }
+    const fresh = isFresh(live.telemetry, Date.now()) ? live.telemetry : null
     const label = plateLabel(plate, plateIndex(workspace.state, plate.id))
     // Planned from where the machine is, as it starts the program there with what it holds.
     const plan = planFor(
       plate,
       compiled.program,
       limitsFor(kitForPlate(plate), configuration),
-      tipInProgram(plate, telemetry),
+      tipInProgram(plate, fresh),
       keptTool
     )
     const runPlate = () => {

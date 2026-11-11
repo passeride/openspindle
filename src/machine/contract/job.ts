@@ -6,7 +6,7 @@ import {
   DisplayNameSchema,
   utf8ByteLength,
 } from "./primitives.ts"
-import { JobProgressSchema } from "./telemetry.ts"
+import { JobProgressSchema, PositionSchema } from "./telemetry.ts"
 
 const MiB = 1024 * 1024
 
@@ -22,6 +22,15 @@ export const RUN_LIMITS = {
   fileLines: 250_000,
 } as const
 
+const LinearPositionSchema = PositionSchema.pick({ x: true, y: true, z: true })
+const CheckedStartSchema = z.strictObject({
+  machine: LinearPositionSchema,
+  work: LinearPositionSchema,
+  units: z.enum(["mm", "in"]),
+  keptTool: z.number().nullable(),
+})
+export type CheckedStart = z.infer<typeof CheckedStartSchema>
+
 export const RunRequestSchema = z.strictObject({
   /** A fresh UUID per Run; a used ID is never replayed. */
   id: z.uuid(),
@@ -35,10 +44,12 @@ export const RunRequestSchema = z.strictObject({
     ),
   assists: PlateAssistsSchema.nullable(),
   /**
-   * Keep the tool the machine holds: Run does not make it forget the tool before play, so a
-   * first tool change to that tool changes nothing and the job starts without stopping for it.
+   * Request keeping the current tool. Refused when a manual Z1 must forget its tool for the
+   * program's first M6 to stop and measure it: bypassing calibration is unsafe.
    */
   keepTool: z.boolean().optional(),
+  /** The position and units used for the app’s tool setter clearance check. */
+  checkedStart: CheckedStartSchema.optional(),
 })
 export type RunRequest = z.infer<typeof RunRequestSchema>
 

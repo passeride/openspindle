@@ -6,6 +6,10 @@
 
 Packaged apps keep only Electron's English resources (`electronLanguages` in [electron-builder.yml](../electron-builder.yml): `en` on macOS, `en-US` on Windows, which names them by region), as the interface is English: without Chromium's other translations the app is 50 MB smaller, and whatever the computer's language, Chromium's locale is en-US (times and numbers the app formats with the default locale look as they do in the US) and macOS's own dialogs are in English.
 
+## Linux packaging
+
+`npm run dist:linux -- --publish never` builds an x64 AppImage in `release/`. Use Node.js 24 and install dependencies with `npm ci` first. Mark the resulting AppImage executable to launch it. Linux packaging is available locally; the release workflow publishes macOS and Windows packages. Verify app launch, NC import, device communication and HID permissions on the target Linux distribution before controlling a machine.
+
 ## Versions
 
 Versions follow semantic versioning. [release-please](https://github.com/googleapis/release-please) sets the next one from the titles of the pull requests merged since the last release ([Pull requests](../README.md#pull-requests)): a `fix` or `perf` raises the patch version, a `feat` the minor version, and a breaking change (`feat!:`) the minor version while the version is below 1.0.0 and the major version after. The release pull request writes it into package.json, package-lock.json and `.release-please-manifest.json`; nobody edits it by hand. To release a particular version, such as 1.0.0, end a pull request's description with the line `Release-As: 1.0.0`, and the release pull request takes that version. A release pull request opens only when there is something for the release notes: a `feat`, `fix`, `perf` or `revert` merged since the last release.
