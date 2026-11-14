@@ -226,8 +226,6 @@ function SignalWatch({
             telemetry.machine.z,
           ],
         }
-        let proofId: string | null = null
-        let firstRead = true
         while (!signal.aborted) {
           if (Date.now() < quietUntil.current) {
             setMessage(
@@ -239,10 +237,6 @@ function SignalWatch({
           const before = await host.snapshot()
           requireActive(signal)
           checkPose(before, connectionId, binding)
-          if (proofId && before.probeCheck?.binding.id !== proofId)
-            throw new Error(
-              "The signal check changed. Return to the previous step and Next to check again."
-            )
           if (!before.availability.readSwitches.allowed) {
             setMessage(
               before.availability.readSwitches.reason ??
@@ -256,9 +250,8 @@ function SignalWatch({
           if (Date.now() < quietUntil.current) continue
           const report = await host.readSwitches({
             expectedConnectionId: connectionId,
-            startProbeCheck: firstRead,
+            startProbeCheck: true,
           })
-          firstRead = false
           requireActive(signal)
           if (report.probe === null)
             throw new Error(
@@ -273,21 +266,16 @@ function SignalWatch({
           requireActive(signal)
           checkPose(after, connectionId, binding)
           const check = after.probeCheck
-          if (!proofId && report.probe) {
+          if (report.probe) {
             throw new Error(
               "The probe input is active. Clear the contact, then return to the previous step and continue."
             )
           } else {
-            if (
-              !check ||
-              check.connectionId !== connectionId ||
-              (proofId && check.binding.id !== proofId)
-            )
+            if (!check || check.connectionId !== connectionId)
               throw new Error(
                 "Signal check interrupted. Keep the probe still, then return to the previous step and Next."
               )
-            proofId = check.binding.id
-            if (check.phase === "verified") return proofId
+            if (check.phase === "verified") return check.binding.id
             throw new Error("The released probe input could not be verified.")
           }
         }
