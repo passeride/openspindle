@@ -4,15 +4,11 @@ import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { FieldDescription } from "@/components/ui/field"
 import { StageCard } from "@/features/job/stage-card"
-import { probeProfile } from "@/domain/tools/tool"
 import type { Tool } from "@/domain/tools/tool"
 import { isFresh, isHeightCompensationOff } from "@/machine/contract"
 import type { MachineSnapshot, ProbeCheckBinding } from "@/machine/contract"
 import { useMachineHost, useMachineSnapshot } from "@/platform/machine"
 import { log } from "@/app/errors/log"
-
-// UI scoping only; the host owns expiry, tool identity and the one-use input proof.
-let verifiedToolKey: string | null = null
 
 /** Only a released input checked at the current stationary pose can enable Run. */
 export function checkedProbeBinding(machine: MachineSnapshot) {
@@ -148,7 +144,6 @@ export function ProbeInputCheck({
   return (
     <SignalWatch
       key={`${JSON.stringify(tool)}:${poseKey}`}
-      tool={tool}
       toolNumber={toolNumber}
       ready={ready}
       waitingMessage={waitingMessage ?? "Waiting for probe status."}
@@ -158,13 +153,11 @@ export function ProbeInputCheck({
 }
 
 function SignalWatch({
-  tool,
   toolNumber,
   ready,
   waitingMessage,
   onVerified,
 }: {
-  tool: Tool
   toolNumber: number | null
   ready: boolean
   waitingMessage: string
@@ -234,14 +227,6 @@ function SignalWatch({
           ],
         }
         let proofId: string | null = null
-        const previous = initial.probeCheck
-        const retainSignal =
-          verifiedToolKey === JSON.stringify(tool) &&
-          previous?.phase === "verified" &&
-          previous.connectionId === connectionId &&
-          previous.expiresAt > Date.now() &&
-          previous.binding.tool === toolNumber &&
-          previous.binding.toolOffset === telemetry.toolOffset
         let firstRead = true
         while (!signal.aborted) {
           if (Date.now() < quietUntil.current) {
@@ -271,7 +256,7 @@ function SignalWatch({
           if (Date.now() < quietUntil.current) continue
           const report = await host.readSwitches({
             expectedConnectionId: connectionId,
-            startProbeCheck: firstRead && !retainSignal,
+            startProbeCheck: firstRead,
           })
           firstRead = false
           requireActive(signal)
@@ -289,8 +274,8 @@ function SignalWatch({
           checkPose(after, connectionId, binding)
           const check = after.probeCheck
           if (!proofId && report.probe) {
-            setMessage(
-              "Remove the contact first; the input is already touching"
+            throw new Error(
+              "The probe input is active. Clear the contact, then return to the previous step and continue."
             )
           } else {
             if (
@@ -303,13 +288,8 @@ function SignalWatch({
               )
             proofId = check.binding.id
             if (check.phase === "verified") return proofId
-            setMessage(
-              check.phase === "triggered"
-                ? "Contact detected—remove it now"
-                : "Ready—touch the probe once, then remove the contact"
-            )
+            throw new Error("The released probe input could not be verified.")
           }
-          await waitForNextRead(signal)
         }
         requireActive(signal)
         throw new DOMException("Signal watch ended.", "AbortError")
@@ -319,7 +299,6 @@ function SignalWatch({
       }
     },
     onSuccess: (id) => {
-      verifiedToolKey = JSON.stringify(tool)
       setVerifiedId(id)
       setMessage("Probe signal verified")
       callback.current(id)
@@ -342,7 +321,6 @@ function SignalWatch({
     check?.phase === "verified" &&
     check.binding.id === verifiedId &&
     check.expiresAt > Date.now()
-  const conductive = probeProfile(tool)?.contact === "conductive"
   let shown = message
   if (!ready) shown = waitingMessage
   else if (verifiedId && !verified)
@@ -363,22 +341,14 @@ function SignalWatch({
         )}
       </div>
       <p>
-        After positioning, leave the axes stationary and spindle stopped. The
-        guide watches the signal automatically. No buttons are needed while
-        touching.
-      </p>
-      <p>
-        {conductive
-          ? "Touch the stationary rod with a wire or metal object connected to the machine's conductive table or bracket. Hold for about two seconds, then remove it. A loose metal object alone may not complete the sensing circuit. Do not push or bend the rod."
-          : "Gently trigger the stationary probe once, hold for about two seconds, then let it return."}{" "}
-        Return to the PC and continue when the signal is verified.
+        Keep the axes stationary and the spindle stopped. The guide checks
+        automatically that the probe input is open; no manual touch test is
+        required.
       </p>
       <FieldDescription>
-        This sends status queries only, with no axis motion. A tool-setter
-        measurement checks a separate input. Remove loose testing contacts
-        before running the job. A completed touch test stays valid through
-        jogging for the same measured probe within its two-minute window. The
-        guide checks the released input again when you stop positioning.
+        This sends a status query only, with no axis motion. An active or
+        unknown input blocks probing. The actual probing run still checks each
+        contact and release within its travel limits.
       </FieldDescription>
     </StageCard>
   )
