@@ -846,9 +846,11 @@ function OperationRow(
           title={suppressed ? `${operation.name} (suppressed)` : operation.name}
           onClick={() => props.onSelectOperation(plate.id, operation.id)}
           onDoubleClick={() => {
-            if (operation.source.kind === "pattern") void navigate({
-              to: "/patterns", search: { operation: operation.id },
-            })
+            if (operation.source.kind === "pattern")
+              void navigate({
+                to: "/patterns",
+                search: { operation: operation.id },
+              })
           }}
         >
           <Icon className={cn(suppressed && SUPPRESSED)} />

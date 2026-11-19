@@ -56,12 +56,18 @@ export function AddOperationDialog({
           description="Create a mathematical XYZ engraving pattern with adjustable sliders."
           onSelect={() => {
             const definition = defaultPattern()
-            if (addPattern({
-              operation: createOperation("Guilloché rosette", {
-                kind: "pattern", tool: definition.tool, definition, nc: null,
-              }),
-              preferredTools: new Map(),
-            })) onClose()
+            if (
+              addPattern({
+                operation: createOperation("Guilloché rosette", {
+                  kind: "pattern",
+                  tool: definition.tool,
+                  definition,
+                  nc: null,
+                }),
+                preferredTools: new Map(),
+              })
+            )
+              onClose()
           }}
         />
         <SourceItem

@@ -15,7 +15,7 @@ available.
 
 The available presets are **Guilloché rosette, concentric rings, sunburst,
 turbine, Archimedean spirals, Flinqué waves, basketweave, Clous de Paris,
-perlage and Grain d'orge**. They are engraving *paths*, not solid-model
+perlage and Grain d'orge**. They are engraving _paths_, not solid-model
 pockets or a simulated rose-engine cutter. Tool radius and actual decorative
 groove geometry depend on the installed cutter.
 

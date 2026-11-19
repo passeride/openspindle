@@ -1,5 +1,8 @@
 import { toast } from "sonner"
-import { useSelectedPlate, useWorkspaceStore } from "@/app/workspace/workspace-context"
+import {
+  useSelectedPlate,
+  useWorkspaceStore,
+} from "@/app/workspace/workspace-context"
 import { PatternEditor } from "./pattern-editor"
 import type { PatternSpec } from "@/domain/operations/pattern"
 import type { PatternOutput } from "./pattern-core"
@@ -10,7 +13,10 @@ export function PatternPage({ operationId }: { operationId: string | null }) {
   const plate = useSelectedPlate()
   const operation = plate?.operations.find((item) => item.id === operationId)
   const pattern = operation?.source.kind === "pattern" ? operation : null
-  const definition = operation?.source.kind === "pattern" ? operation.source.definition : undefined
+  const definition =
+    operation?.source.kind === "pattern"
+      ? operation.source.definition
+      : undefined
   const workspace = useWorkspaceStore()
   const apply = (definition: PatternSpec, output: PatternOutput) => {
     if (!plate || !pattern) return
@@ -19,7 +25,12 @@ export function PatternPage({ operationId }: { operationId: string | null }) {
       plateId: plate.id,
       operationId: pattern.id,
       expectedRevision: pattern.revision,
-      source: { kind: "pattern", tool: definition.tool, definition, nc: output.generated.gcode },
+      source: {
+        kind: "pattern",
+        tool: definition.tool,
+        definition,
+        nc: output.generated.gcode,
+      },
     })
     if (result.ok) toast.success("Toolpath added to the selected operation.")
     else toast.error(result.error)
@@ -27,9 +38,11 @@ export function PatternPage({ operationId }: { operationId: string | null }) {
   return (
     <main className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
       <div className="min-h-0 flex-1">
-        <PatternEditor key={pattern?.id ?? "independent"}
+        <PatternEditor
+          key={pattern?.id ?? "independent"}
           initial={definition}
-          onApply={pattern ? apply : undefined} />
+          onApply={pattern ? apply : undefined}
+        />
       </div>
       {pattern && (
         <details className="shrink-0 border-t">

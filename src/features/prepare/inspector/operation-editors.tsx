@@ -388,9 +388,15 @@ function TaskEditor({
 function PatternNavigate({ operationId }: { operationId: string }) {
   const navigate = useNavigate()
   return (
-    <Button variant="outline" onClick={() => void navigate({
-      to: "/patterns", search: { operation: operationId },
-    })}>
+    <Button
+      variant="outline"
+      onClick={() =>
+        void navigate({
+          to: "/patterns",
+          search: { operation: operationId },
+        })
+      }
+    >
       <Waves />
       Edit pattern and toolpath
     </Button>

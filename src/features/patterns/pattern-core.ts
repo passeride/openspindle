@@ -8,15 +8,30 @@ export type GeneratedPattern = {
   readonly max: [number, number, number]
   readonly points: number
 }
-export type PatternOutput = { generated: GeneratedPattern; engine: "Rust / WASM" | "Local preview" }
+export type PatternOutput = {
+  generated: GeneratedPattern
+  engine: "Rust / WASM" | "Local preview"
+}
 
 type Variables = Readonly<Record<string, number>>
 type Evaluator = (vars: Variables) => number
 const BUILTINS: Record<string, (...args: number[]) => number> = {
-  sin: Math.sin, cos: Math.cos, tan: Math.tan, asin: Math.asin, acos: Math.acos,
-  atan: Math.atan, sqrt: Math.sqrt, abs: Math.abs, floor: Math.floor,
-  ceil: Math.ceil, exp: Math.exp, ln: Math.log, log: Math.log10,
-  min: Math.min, max: Math.max, pow: Math.pow,
+  sin: Math.sin,
+  cos: Math.cos,
+  tan: Math.tan,
+  asin: Math.asin,
+  acos: Math.acos,
+  atan: Math.atan,
+  sqrt: Math.sqrt,
+  abs: Math.abs,
+  floor: Math.floor,
+  ceil: Math.ceil,
+  exp: Math.exp,
+  ln: Math.log,
+  log: Math.log10,
+  min: Math.min,
+  max: Math.max,
+  pow: Math.pow,
 }
 
 /** Small expression parser: no eval, dynamic code or host access; errors are shown in the editor. */
@@ -25,8 +40,14 @@ export function parseFormula(input: string): Evaluator {
   const tokens: string[] = []
   let offset = 0
   while (offset < source.length) {
-    const matched = /^\s*(\d+(?:\.\d*)?(?:[eE][-+]?\d+)?|\.\d+(?:[eE][-+]?\d+)?|[A-Za-z_][A-Za-z_0-9]*|[()+\-*/^,])/.exec(source.slice(offset))
-    if (!matched) throw new Error(`Unexpected token near "${source.slice(offset, offset + 12)}"`)
+    const matched =
+      /^\s*(\d+(?:\.\d*)?(?:[eE][-+]?\d+)?|\.\d+(?:[eE][-+]?\d+)?|[A-Za-z_][A-Za-z_0-9]*|[()+\-*/^,])/.exec(
+        source.slice(offset)
+      )
+    if (!matched)
+      throw new Error(
+        `Unexpected token near "${source.slice(offset, offset + 12)}"`
+      )
     tokens.push(matched[1])
     offset += matched[0].length
     if (tokens.length > 240) throw new Error("Expression is too long")
@@ -55,7 +76,8 @@ export function parseFormula(input: string): Evaluator {
       if (next() !== "(") {
         return (vars) => {
           const result = vars[token]
-          if (result === undefined) throw new Error(`Unknown variable "${token}"`)
+          if (result === undefined)
+            throw new Error(`Unknown variable "${token}"`)
           return result
         }
       }
@@ -68,7 +90,8 @@ export function parseFormula(input: string): Evaluator {
           pop()
         } while (true)
       }
-      if (pop() !== ")") throw new Error("Expected closing function parenthesis")
+      if (pop() !== ")")
+        throw new Error("Expected closing function parenthesis")
       const f = BUILTINS[token]
       if (!f) throw new Error(`Unknown mathematical function "${token}"`)
       if (!args.length) throw new Error(`Function "${token}" needs arguments`)
@@ -97,7 +120,8 @@ export function parseFormula(input: string): Evaluator {
     return lhs
   }
   const output = expression(0)
-  if (cursor !== tokens.length) throw new Error(`Unexpected "${tokens[cursor]}"`)
+  if (cursor !== tokens.length)
+    throw new Error(`Unexpected "${tokens[cursor]}"`)
   return output
 }
 
@@ -106,22 +130,37 @@ const number = (v: number) => v.toFixed(4)
 /** Local preview and offline fallback. Kept in sync with the Rust vector/toolpath IR. */
 export function generateLocally(input: PatternSpec): GeneratedPattern {
   const parsed = PatternSpecSchema.safeParse(input)
-  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid pattern")
+  if (!parsed.success)
+    throw new Error(parsed.error.issues[0]?.message ?? "Invalid pattern")
   const p = parsed.data
   const f = [parseFormula(p.x), parseFormula(p.y), parseFormula(p.z)]
-  const constant = Object.fromEntries(p.parameters.map(({ name, value }) => [name, value]))
+  const constant = Object.fromEntries(
+    p.parameters.map(({ name, value }) => [name, value])
+  )
   const paths: number[][][] = []
   const min: [number, number, number] = [Infinity, Infinity, Infinity]
   const max: [number, number, number] = [-Infinity, -Infinity, -Infinity]
   for (let i = 0; i < p.paths; i++) {
     const curve: number[][] = []
     for (let step = 0; step < p.samples; step++) {
-      const t = p.tMin + (p.tMax - p.tMin) * step / (p.samples - 1)
-      const vars = { ...constant, t, i, n: p.paths, pi: Math.PI, tau: 2 * Math.PI }
+      const t = p.tMin + ((p.tMax - p.tMin) * step) / (p.samples - 1)
+      const vars = {
+        ...constant,
+        t,
+        i,
+        n: p.paths,
+        pi: Math.PI,
+        tau: 2 * Math.PI,
+      }
       const point = f.map((fn) => fn(vars))
       if (point.some((v) => !Number.isFinite(v)))
         throw new Error(`Nonfinite point at path ${i + 1}, sample ${step + 1}`)
-      if (Math.abs(point[0]) > 300 || Math.abs(point[1]) > 300 || point[2] < -3 || point[2] > 0)
+      if (
+        Math.abs(point[0]) > 300 ||
+        Math.abs(point[1]) > 300 ||
+        point[2] < -3 ||
+        point[2] > 0
+      )
         throw new Error("Pattern exceeds ±300 mm XY or -3…0 mm engraving depth")
       for (let axis = 0; axis < 3; axis++) {
         min[axis] = Math.min(min[axis], point[axis])
@@ -133,7 +172,9 @@ export function generateLocally(input: PatternSpec): GeneratedPattern {
   }
   const lines = [
     "(Parametric engraving; verify stock top Z0, cutter and clearances)",
-    "G21 G90 G17 G94", `T${p.tool} M6`, `S${p.rpm} M3`,
+    "G21 G90 G17 G94",
+    `T${p.tool} M6`,
+    `S${p.rpm} M3`,
     `G0 Z${number(p.safeZ)}`,
   ]
   for (const path of paths) {
@@ -141,24 +182,36 @@ export function generateLocally(input: PatternSpec): GeneratedPattern {
     lines.push(`G0 X${number(x)} Y${number(y)}`)
     lines.push(`G1 Z${number(z)} F${number(p.plunge)}`)
     for (const [px, py, pz] of path.slice(1))
-      lines.push(`G1 X${number(px)} Y${number(py)} Z${number(pz)} F${number(p.feed)}`)
+      lines.push(
+        `G1 X${number(px)} Y${number(py)} Z${number(pz)} F${number(p.feed)}`
+      )
     lines.push(`G0 Z${number(p.safeZ)}`)
   }
   lines.push("M5", "M30")
-  return { paths, gcode: lines.join("\n"), min, max, points: p.samples * p.paths }
+  return {
+    paths,
+    gcode: lines.join("\n"),
+    min,
+    max,
+    points: p.samples * p.paths,
+  }
 }
 
 /**
  * Uses the Rust WASM engine when it has been built into public/pattern-wasm.
  * This is an optional separate build: the local implementation keeps development usable.
  */
-export async function generatePattern(spec: PatternSpec): Promise<PatternOutput> {
+export async function generatePattern(
+  spec: PatternSpec
+): Promise<PatternOutput> {
   const validated = PatternSpecSchema.parse(spec)
   try {
     const uri = `${import.meta.env.BASE_URL}pattern-wasm/openspindle_pattern_engine.js`
     const module = await import(/* @vite-ignore */ uri)
     await module.default()
-    const output: GeneratedPattern = JSON.parse(module.generate_pattern(JSON.stringify(validated)))
+    const output: GeneratedPattern = JSON.parse(
+      module.generate_pattern(JSON.stringify(validated))
+    )
     return { generated: output, engine: "Rust / WASM" }
   } catch {
     return { generated: generateLocally(validated), engine: "Local preview" }

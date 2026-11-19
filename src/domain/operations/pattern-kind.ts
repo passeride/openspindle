@@ -13,11 +13,16 @@ export const patternKind: OperationKind<"pattern"> = {
   resolve: (operation) => {
     const { nc } = operation.source
     if (nc === null)
-      return fail(error("operation-pending",
-        `Generate the pattern toolpath for "${operation.name}" before running it.`, {
-          subject: operationSubject(operation.id),
-          fix: { kind: "edit-operation", operationId: operation.id },
-        }))
+      return fail(
+        error(
+          "operation-pending",
+          `Generate the pattern toolpath for "${operation.name}" before running it.`,
+          {
+            subject: operationSubject(operation.id),
+            fix: { kind: "edit-operation", operationId: operation.id },
+          }
+        )
+      )
     return ok({ nc, policy: PLAIN_NC, reviewLines: [] })
   },
 }
