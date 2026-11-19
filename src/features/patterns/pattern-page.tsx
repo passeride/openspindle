@@ -18,7 +18,7 @@ export function PatternPage({ operationId }: { operationId: string | null }) {
       ? operation.source.definition
       : undefined
   const workspace = useWorkspaceStore()
-  const apply = (definition: PatternSpec, output: PatternOutput) => {
+  const apply = (nextDefinition: PatternSpec, output: PatternOutput) => {
     if (!plate || !pattern) return
     const result = workspace.dispatch({
       type: "operation.source",
@@ -27,8 +27,8 @@ export function PatternPage({ operationId }: { operationId: string | null }) {
       expectedRevision: pattern.revision,
       source: {
         kind: "pattern",
-        tool: definition.tool,
-        definition,
+        tool: nextDefinition.tool,
+        definition: nextDefinition,
         nc: output.generated.gcode,
       },
     })

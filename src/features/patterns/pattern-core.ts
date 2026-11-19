@@ -53,8 +53,8 @@ export function parseFormula(input: string): Evaluator {
     if (tokens.length > 240) throw new Error("Expression is too long")
   }
   let cursor = 0
-  const next = () => tokens[cursor]
-  const pop = () => tokens[cursor++]
+  const next = (): string | undefined => tokens[cursor]
+  const pop = (): string | undefined => tokens[cursor++]
   function primary(): Evaluator {
     const token = pop()
     if (!token) throw new Error("Incomplete formula")
@@ -75,7 +75,7 @@ export function parseFormula(input: string): Evaluator {
     if (/^[A-Za-z_]/.test(token)) {
       if (next() !== "(") {
         return (vars) => {
-          const result = vars[token]
+          const result: number | undefined = vars[token]
           if (result === undefined)
             throw new Error(`Unknown variable "${token}"`)
           return result
@@ -83,12 +83,10 @@ export function parseFormula(input: string): Evaluator {
       }
       pop()
       const args: Evaluator[] = []
-      if (next() !== ")") {
-        do {
-          args.push(expression(0))
-          if (next() !== ",") break
-          pop()
-        } while (true)
+      while (next() !== ")") {
+        args.push(expression(0))
+        if (next() !== ",") break
+        pop()
       }
       if (pop() !== ")")
         throw new Error("Expected closing function parenthesis")
@@ -101,7 +99,7 @@ export function parseFormula(input: string): Evaluator {
   }
   function expression(min: number): Evaluator {
     let lhs = primary()
-    while (true) {
+    while (cursor < tokens.length) {
       const op = next()
       let priority = -1
       if (op === "+" || op === "-") priority = 1
