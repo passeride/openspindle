@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo } from "react"
-import { FileCode2, RefreshCw } from "lucide-react"
+import { FileCode2, RefreshCw, Waves } from "lucide-react"
+import { useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -394,6 +395,8 @@ export function OperationEditor({
 }) {
   const source = operation.source
   switch (source.kind) {
+    case "pattern":
+      return <PatternNavigate plateId={plate.id} operationId={operation.id} />
     case "facing":
       return (
         <Button
