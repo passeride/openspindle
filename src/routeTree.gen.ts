@@ -58,6 +58,7 @@ export interface FileRoutesByTo {
   '/device': typeof WorkspaceDeviceRoute
   '/job': typeof WorkspaceJobRoute
   '/prepare': typeof WorkspacePrepareRoute
+  '/patterns': typeof WorkspacePatternsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
