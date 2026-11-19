@@ -146,7 +146,9 @@ export function PatternEditor({ initial, onApply }: Props) {
                   </div>
                 </div>
                 <Slider min={item.min} max={item.max} step={item.step} value={[item.value]}
-                  onValueChange={(values) => param(index, { value: values[0] })} />
+                  onValueChange={(values) => param(index, {
+                    value: Array.isArray(values) ? values[0] : values,
+                  })} />
                 <div className="grid grid-cols-3 gap-2">
                   <Numeric label="Min" value={item.min} step={item.step}
                     onChange={(value) => param(index, { min: value })}/>

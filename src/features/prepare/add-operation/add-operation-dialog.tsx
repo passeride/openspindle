@@ -60,6 +60,7 @@ export function AddOperationDialog({
               operation: createOperation("Guilloché rosette", {
                 kind: "pattern", tool: definition.tool, definition, nc: null,
               }),
+              preferredTools: new Map(),
             })) onClose()
           }}
         />
