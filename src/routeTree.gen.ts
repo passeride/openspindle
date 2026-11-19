@@ -13,8 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as WorkspaceRouteImport } from './routes/_workspace'
 import { Route as WorkspaceDeviceRouteImport } from './routes/_workspace/device'
 import { Route as WorkspaceJobRouteImport } from './routes/_workspace/job'
-import { Route as WorkspacePrepareRouteImport } from './routes/_workspace/prepare'
 import { Route as WorkspacePatternsRouteImport } from './routes/_workspace/patterns'
+import { Route as WorkspacePrepareRouteImport } from './routes/_workspace/prepare'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -35,14 +35,14 @@ const WorkspaceJobRoute = WorkspaceJobRouteImport.update({
   path: '/job',
   getParentRoute: () => WorkspaceRoute,
 } as any)
-const WorkspacePrepareRoute = WorkspacePrepareRouteImport.update({
-  id: '/prepare',
-  path: '/prepare',
-  getParentRoute: () => WorkspaceRoute,
-} as any)
 const WorkspacePatternsRoute = WorkspacePatternsRouteImport.update({
   id: '/patterns',
   path: '/patterns',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
+const WorkspacePrepareRoute = WorkspacePrepareRouteImport.update({
+  id: '/prepare',
+  path: '/prepare',
   getParentRoute: () => WorkspaceRoute,
 } as any)
 
@@ -50,15 +50,15 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/device': typeof WorkspaceDeviceRoute
   '/job': typeof WorkspaceJobRoute
-  '/prepare': typeof WorkspacePrepareRoute
   '/patterns': typeof WorkspacePatternsRoute
+  '/prepare': typeof WorkspacePrepareRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/device': typeof WorkspaceDeviceRoute
   '/job': typeof WorkspaceJobRoute
-  '/prepare': typeof WorkspacePrepareRoute
   '/patterns': typeof WorkspacePatternsRoute
+  '/prepare': typeof WorkspacePrepareRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -66,22 +66,22 @@ export interface FileRoutesById {
   '/_workspace': typeof WorkspaceRouteWithChildren
   '/_workspace/device': typeof WorkspaceDeviceRoute
   '/_workspace/job': typeof WorkspaceJobRoute
-  '/_workspace/prepare': typeof WorkspacePrepareRoute
   '/_workspace/patterns': typeof WorkspacePatternsRoute
+  '/_workspace/prepare': typeof WorkspacePrepareRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/device' | '/job' | '/prepare' | '/patterns'
+  fullPaths: '/' | '/device' | '/job' | '/patterns' | '/prepare'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/device' | '/job' | '/prepare' | '/patterns'
+  to: '/' | '/device' | '/job' | '/patterns' | '/prepare'
   id:
     | '__root__'
     | '/'
     | '/_workspace'
     | '/_workspace/device'
     | '/_workspace/job'
-    | '/_workspace/prepare'
     | '/_workspace/patterns'
+    | '/_workspace/prepare'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -119,18 +119,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceJobRouteImport
       parentRoute: typeof WorkspaceRoute
     }
-    '/_workspace/prepare': {
-      id: '/_workspace/prepare'
-      path: '/prepare'
-      fullPath: '/prepare'
-      preLoaderRoute: typeof WorkspacePrepareRouteImport
-      parentRoute: typeof WorkspaceRoute
-    }
     '/_workspace/patterns': {
       id: '/_workspace/patterns'
       path: '/patterns'
       fullPath: '/patterns'
       preLoaderRoute: typeof WorkspacePatternsRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/prepare': {
+      id: '/_workspace/prepare'
+      path: '/prepare'
+      fullPath: '/prepare'
+      preLoaderRoute: typeof WorkspacePrepareRouteImport
       parentRoute: typeof WorkspaceRoute
     }
   }
@@ -139,15 +139,15 @@ declare module '@tanstack/react-router' {
 interface WorkspaceRouteChildren {
   WorkspaceDeviceRoute: typeof WorkspaceDeviceRoute
   WorkspaceJobRoute: typeof WorkspaceJobRoute
-  WorkspacePrepareRoute: typeof WorkspacePrepareRoute
   WorkspacePatternsRoute: typeof WorkspacePatternsRoute
+  WorkspacePrepareRoute: typeof WorkspacePrepareRoute
 }
 
 const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceDeviceRoute: WorkspaceDeviceRoute,
   WorkspaceJobRoute: WorkspaceJobRoute,
-  WorkspacePrepareRoute: WorkspacePrepareRoute,
   WorkspacePatternsRoute: WorkspacePatternsRoute,
+  WorkspacePrepareRoute: WorkspacePrepareRoute,
 }
 
 const WorkspaceRouteWithChildren = WorkspaceRoute._addFileChildren(

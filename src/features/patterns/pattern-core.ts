@@ -13,9 +13,9 @@ export type PatternOutput = {
   engine: "Rust / WASM" | "Local preview"
 }
 
-type Variables = Readonly<Record<string, number>>
+type Variables = Readonly<Partial<Record<string, number>>>
 type Evaluator = (vars: Variables) => number
-const BUILTINS: Record<string, (...args: number[]) => number> = {
+const BUILTINS: Partial<Record<string, (...args: number[]) => number>> = {
   sin: Math.sin,
   cos: Math.cos,
   tan: Math.tan,
@@ -64,7 +64,7 @@ export function parseFormula(input: string): Evaluator {
       return inner
     }
     if (token === "+" || token === "-") {
-      const rhs = expression(4)
+      const rhs = expression(3)
       if (token === "-") return (v) => -rhs(v)
       return rhs
     }
@@ -90,9 +90,12 @@ export function parseFormula(input: string): Evaluator {
       }
       if (pop() !== ")")
         throw new Error("Expected closing function parenthesis")
-      const f = BUILTINS[token]
+      const f = Object.hasOwn(BUILTINS, token) ? BUILTINS[token] : undefined
       if (!f) throw new Error(`Unknown mathematical function "${token}"`)
-      if (!args.length) throw new Error(`Function "${token}" needs arguments`)
+      const expected = token === "pow" ? 2 : 1
+      const variadic = token === "min" || token === "max"
+      if (args.length < expected || (!variadic && args.length !== expected))
+        throw new Error(`Invalid number of arguments for "${token}"`)
       return (v) => f(...args.map((arg) => arg(v)))
     }
     throw new Error(`Unexpected symbol "${token}"`)
@@ -195,23 +198,39 @@ export function generateLocally(input: PatternSpec): GeneratedPattern {
   }
 }
 
-/**
- * Uses the Rust WASM engine when it has been built into public/pattern-wasm.
- * This is an optional separate build: the local implementation keeps development usable.
- */
+type PatternWasm = {
+  default: () => Promise<unknown>
+  generate_pattern: (request: string) => string
+}
+let wasmEngine: Promise<PatternWasm | null> | undefined
+
+/** Load once, including the optional module's absence in standalone local mode. */
+function loadWasm(): Promise<PatternWasm | null> {
+  wasmEngine ??= (async () => {
+    try {
+      const uri = `${import.meta.env.BASE_URL}pattern-wasm/openspindle_pattern_engine.js`
+      const module: PatternWasm = await import(/* @vite-ignore */ uri)
+      await module.default()
+      return module
+    } catch {
+      return null
+    }
+  })()
+  return wasmEngine
+}
+
+/** Uses Rust when available; formula errors never silently switch engines. */
 export async function generatePattern(
   spec: PatternSpec
 ): Promise<PatternOutput> {
   const validated = PatternSpecSchema.parse(spec)
-  try {
-    const uri = `${import.meta.env.BASE_URL}pattern-wasm/openspindle_pattern_engine.js`
-    const module = await import(/* @vite-ignore */ uri)
-    await module.default()
-    const output: GeneratedPattern = JSON.parse(
-      module.generate_pattern(JSON.stringify(validated))
-    )
-    return { generated: output, engine: "Rust / WASM" }
-  } catch {
+  // Check the shared formula language before either engine evaluates it.
+  for (const axis of [validated.x, validated.y, validated.z]) parseFormula(axis)
+  const module = await loadWasm()
+  if (!module)
     return { generated: generateLocally(validated), engine: "Local preview" }
-  }
+  const output: GeneratedPattern = JSON.parse(
+    module.generate_pattern(JSON.stringify(validated))
+  )
+  return { generated: output, engine: "Rust / WASM" }
 }

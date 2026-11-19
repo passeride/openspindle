@@ -53,7 +53,23 @@ fn expression(input: &str, axis: &str) -> Result<Expr, String> {
 }
 
 fn eval(expr: &Expr, spec: &Spec, t: f64, i: usize) -> Result<f64, String> {
-    let mut context = Context::new();
+    let mut context = Context::empty();
+    context.func("sin", f64::sin);
+    context.func("cos", f64::cos);
+    context.func("tan", f64::tan);
+    context.func("asin", f64::asin);
+    context.func("acos", f64::acos);
+    context.func("atan", f64::atan);
+    context.func("sqrt", f64::sqrt);
+    context.func("abs", f64::abs);
+    context.func("floor", f64::floor);
+    context.func("ceil", f64::ceil);
+    context.func("exp", f64::exp);
+    context.func("ln", f64::ln);
+    context.func("log", f64::log10);
+    context.func2("pow", f64::powf);
+    context.funcn("min", |args| args.iter().copied().fold(f64::INFINITY, f64::min), 1..);
+    context.funcn("max", |args| args.iter().copied().fold(f64::NEG_INFINITY, f64::max), 1..);
     context.var("t", t);
     context.var("i", i as f64);
     context.var("n", spec.paths as f64);

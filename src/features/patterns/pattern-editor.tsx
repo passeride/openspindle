@@ -105,29 +105,35 @@ export function PatternEditor({ initial, onApply }: Props) {
   const [spec, setSpec] = useState<PatternSpec>(() =>
     structuredClone(initial ?? defaultPattern())
   )
-  const [output, setOutput] = useState<PatternOutput | null>(null)
+  const [result, setResult] = useState<{
+    spec: PatternSpec
+    output: PatternOutput
+  } | null>(null)
+  // Only enable saving or exporting when these exact inputs produced the NC.
+  const output = result?.spec === spec ? result.output : null
   const [problem, setProblem] = useState<string | null>(null)
-  const [pending, setPending] = useState(false)
+  const pending = !output && !problem
   const [paramName, setParamName] = useState("")
   const update = (patch: Partial<PatternSpec>) =>
-    setSpec((current) => ({ ...current, ...patch }))
+    changeSpec({ ...spec, ...patch })
+  const changeSpec = (next: PatternSpec) => {
+    setProblem(null)
+    setSpec(next)
+  }
   useEffect(() => {
     let active = true
     const handle = window.setTimeout(() => {
-      setPending(true)
       void generatePattern(spec).then(
         (next) => {
           if (active) {
-            setOutput(next)
+            setResult({ spec, output: next })
             setProblem(null)
-            setPending(false)
           }
         },
         (error: unknown) => {
           if (active) {
-            setOutput(null)
+            setResult(null)
             setProblem(error instanceof Error ? error.message : String(error))
-            setPending(false)
           }
         }
       )
@@ -217,7 +223,7 @@ export function PatternEditor({ initial, onApply }: Props) {
                   size="sm"
                   className="h-auto justify-start text-left whitespace-normal"
                   title={item.description}
-                  onClick={() => setSpec(structuredClone(item.spec))}
+                  onClick={() => changeSpec(structuredClone(item.spec))}
                 >
                   {item.name}
                 </Button>

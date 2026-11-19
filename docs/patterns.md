@@ -49,7 +49,13 @@ Then run `npm run patterns:dev` for the standalone web editor, or
 `npm run patterns:build` to build `dist-patterns/standalone.html`.
 When the WASM artifact was not built, the editor uses its local JavaScript
 mathematical fallback, visibly labelled **Local preview**. The Rust and
-JavaScript engines produce the same path data structure.
+JavaScript engines produce the same path data structure. Supported functions are
+`sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `sqrt`, `abs`, `floor`, `ceil`,
+`exp`, `ln` (natural logarithm), `log` (base 10), `pow`, `min` and `max`.
+Powers bind before unary minus: `-2^2` means `-(2^2)`.
+Errors from an available Rust engine appear in the editor. Export and Apply
+remain disabled until the current inputs have finished generating, so an
+edited recipe cannot be saved with an older toolpath.
 
 ## Machining and safety
 
