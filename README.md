@@ -32,6 +32,7 @@ OpenSpindle is a desktop app for preparing, checking and running jobs on a Maker
 - A tool library with Fusion 360 import and Makera, Genmitsu, SpeTool, Dreanique and FoxAlien catalogs
 - STEP-NC project files with Save/Save As, a centered filename and unsaved-change marker, and NC export with the plate's setup
 - Built-in PCB preparation from KiCad Gerber and Excellon files, using your local pcb2gcode installation
+- Parametric watch dial **Patterns / Textures**: edit mathematical XYZ formulas, explore guilloché presets with sliders, preview and export G-code, or add a reusable Pattern operation from Prepare
 - Error reports and logs under your control; no account or cloud service
 - An app for Windows, and a signed and notarized app for Apple silicon and Intel Macs, that update themselves
 
@@ -84,6 +85,7 @@ If something behaves differently, **Help › Export Protocol Trace…** saves th
 - [Guided workshop](docs/guided-workshop.md): setup, facing, cutting presets, measurement proposals, reusable processes, material removal and simulator trials
 - [Probing](docs/probing.md): [Z surface](docs/touch-off.md), [height map](docs/height-map.md), [outline trace](docs/outline-trace.md), and [corners and centres](docs/3d-probing.md) with the 3D probe
 - [PCB operations](docs/pcb.md) from KiCad Gerber and Excellon files, and setting up pcb2gcode
+- [Patterns / Textures](docs/patterns.md): a standalone Rust/WASM formula generator, ten engraving presets, and editing an OpenSpindle operation
 - [Fusion 360](docs/fusion360.md): install the add-in, connect, and import and update NC programs
 - [Stored anchors](docs/stored-anchors.md), [models](docs/models.md) and [design rules](docs/design-rules.md)
 - [Device controls](docs/device-controls.md) and [diagnosis](docs/device-controls.md#diagnosis), [running programs](docs/device-jobs.md) and [the height map](docs/device-height-map.md)

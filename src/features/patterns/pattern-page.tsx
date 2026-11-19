@@ -10,6 +10,7 @@ export function PatternPage({ operationId }: { operationId: string | null }) {
   const plate = useSelectedPlate()
   const operation = plate?.operations.find((item) => item.id === operationId)
   const pattern = operation?.source.kind === "pattern" ? operation : null
+  const definition = operation?.source.kind === "pattern" ? operation.source.definition : undefined
   const workspace = useWorkspaceStore()
   const apply = (definition: PatternSpec, output: PatternOutput) => {
     if (!plate || !pattern) return
@@ -27,7 +28,7 @@ export function PatternPage({ operationId }: { operationId: string | null }) {
     <main className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
       <div className="min-h-0 flex-1">
         <PatternEditor key={pattern?.id ?? "independent"}
-          initial={pattern?.source.definition}
+          initial={definition}
           onApply={pattern ? apply : undefined} />
       </div>
       {pattern && (

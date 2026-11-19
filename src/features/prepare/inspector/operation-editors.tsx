@@ -385,6 +385,18 @@ function TaskEditor({
   }
 }
 
+function PatternNavigate({ operationId }: { operationId: string }) {
+  const navigate = useNavigate()
+  return (
+    <Button variant="outline" onClick={() => void navigate({
+      to: "/patterns", search: { operation: operationId },
+    })}>
+      <Waves />
+      Edit pattern and toolpath
+    </Button>
+  )
+}
+
 /** The editor for an operation's source, by kind. */
 export function OperationEditor({
   plate,
@@ -396,7 +408,7 @@ export function OperationEditor({
   const source = operation.source
   switch (source.kind) {
     case "pattern":
-      return <PatternNavigate plateId={plate.id} operationId={operation.id} />
+      return <PatternNavigate operationId={operation.id} />
     case "facing":
       return (
         <Button

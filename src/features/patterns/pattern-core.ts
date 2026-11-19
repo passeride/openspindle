@@ -80,8 +80,10 @@ export function parseFormula(input: string): Evaluator {
     let lhs = primary()
     while (true) {
       const op = next()
-      const priority = op === "+" || op === "-" ? 1 :
-        op === "*" || op === "/" ? 2 : op === "^" ? 3 : -1
+      let priority = -1
+      if (op === "+" || op === "-") priority = 1
+      if (op === "*" || op === "/") priority = 2
+      if (op === "^") priority = 3
       if (priority < min) break
       pop()
       const rhs = expression(priority + (op === "^" ? 0 : 1))
