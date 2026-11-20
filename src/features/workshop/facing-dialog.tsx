@@ -35,7 +35,7 @@ import {
 } from "@/domain/operations/facing"
 import type { FacingParams } from "@/domain/operations/facing"
 import type { PlateSetup } from "@/domain/plate/plate"
-import { createPreset } from "@/domain/tools/tool"
+import { createPreset, matchesCuttingMaterial } from "@/domain/tools/tool"
 import type { Tool } from "@/domain/tools/tool"
 import { kitForPlate } from "@/domain/fixtures/catalog"
 import { useProbingDraft } from "@/features/probing/probing-form"
@@ -95,16 +95,10 @@ function materialPreset(
   range?: { min: number; max: number } | null
 ) {
   if (!tool || !material) return undefined
-  const key = (name: string) =>
-    name
-      .toLowerCase()
-      .replace(/aluminium/g, "aluminum")
-      .replace(/[^a-z0-9]/g, "")
   const matches = tool.presets.filter((preset) => {
-    const rpm = preset.rpm ?? 0
+    const rpm = Math.round(preset.rpm ?? 0)
     return (
-      preset.material &&
-      key(preset.material) === key(material) &&
+      matchesCuttingMaterial(preset, material) &&
       rpm > 0 &&
       (preset.feedRate ?? 0) > 0 &&
       (preset.plungeFeed ?? 0) > 0 &&
@@ -120,7 +114,7 @@ function applyCuttingPreset(
 ): FacingParams {
   return {
     ...params,
-    rpm: preset.rpm ?? params.rpm,
+    rpm: preset.rpm === null ? params.rpm : Math.round(preset.rpm),
     feed: preset.feedRate ?? params.feed,
     plunge: preset.plungeFeed ?? params.plunge,
     stepdown:

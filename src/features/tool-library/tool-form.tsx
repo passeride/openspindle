@@ -1,3 +1,4 @@
+import { TriangleAlert } from "lucide-react"
 import { useId } from "react"
 import type { ReactNode } from "react"
 import {
@@ -39,7 +40,7 @@ function FieldFrame({
   wide = false,
   children,
 }: {
-  label: string
+  label: ReactNode
   hint?: string
   controlId: string
   wide?: boolean
@@ -137,6 +138,8 @@ interface NumberFieldProps {
   unit?: string
   integer?: boolean
   max?: number
+  hint?: string
+  warning?: boolean
 }
 
 /** Millimetres and degrees commit to three decimals, as MeasurementInput shows them. */
@@ -144,11 +147,35 @@ const roundsToThree = (unit: string | undefined) =>
   unit === "mm" || unit === "°"
 
 /** A non-negative number, blank for unknown; millimetres and degrees round to three decimals. */
-function NumberField({ label, unit, integer = false, max }: NumberFieldProps) {
+function NumberField({
+  label,
+  unit,
+  integer = false,
+  max,
+  hint,
+  warning,
+}: NumberFieldProps) {
   const field = useFieldContext<number | null>()
   const id = useId()
   return (
-    <FieldFrame label={label} controlId={id}>
+    <FieldFrame
+      label={
+        warning ? (
+          <span className="inline-flex items-center gap-1">
+            {label}
+            <TriangleAlert
+              aria-hidden="true"
+              className="size-3 text-amber-500"
+            />
+            <span className="sr-only"> · Needed for stock preview</span>
+          </span>
+        ) : (
+          label
+        )
+      }
+      hint={hint}
+      controlId={id}
+    >
       <MeasurementInput
         id={id}
         name={field.name}
@@ -159,6 +186,7 @@ function NumberField({ label, unit, integer = false, max }: NumberFieldProps) {
         value={field.state.value ?? ""}
         placeholder="—"
         unit={unit}
+        aria-description={hint}
         aria-invalid={!field.state.meta.isValid}
         onBlur={field.handleBlur}
         onChange={(event) => {

@@ -3,6 +3,7 @@ import {
   clone,
   createPreset,
   createTool,
+  cuttingPresetMaterial,
   defaultProbeProfile,
   isJson,
   issueMessages,
@@ -268,6 +269,7 @@ export function fusionTool(
       preset.name =
         optionalText(value.name, "preset.name") ?? `Preset ${presetIndex + 1}`
       preset.material = presetMaterial(value.material)
+      preset.material = cuttingPresetMaterial(preset)
       preset.description = optionalText(value.description, "preset.description")
       preset.rpm = optionalNumber(value.n, "preset.n")
       preset.rampRpm = optionalNumber(value.n_ramp, "preset.n_ramp")

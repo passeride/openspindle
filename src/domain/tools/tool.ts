@@ -432,6 +432,28 @@ export const isTool = (value: unknown): value is Tool =>
   ToolShapeSchema.safeParse(value).success
 
 /** A tool type compared loosely: "Bull-Nose_End Mill" and "bull nose end mill" are one type. */
+/** Some Fusion recipes put the material in the name and leave the selector empty. */
+export function cuttingPresetMaterial(
+  preset: Pick<CuttingPreset, "name" | "material">
+) {
+  if (preset.material) return preset.material
+  return /^(aluminum|aluminium)$/i.test(preset.name.trim()) ? "Aluminium" : null
+}
+
+export function matchesCuttingMaterial(
+  preset: Pick<CuttingPreset, "name" | "material">,
+  stockMaterial: string
+) {
+  const material = cuttingPresetMaterial(preset)
+  if (!material) return false
+  const key = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/aluminium/g, "aluminum")
+      .replace(/[^a-z0-9]/g, "")
+  return key(material) === key(stockMaterial)
+}
+
 export const toolKindKey = (kind: string) =>
   kind
     .toLowerCase()

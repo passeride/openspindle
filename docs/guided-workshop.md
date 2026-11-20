@@ -115,3 +115,6 @@ Prepare, Job and Facing remember the shared orbit, pan and zoom while switching 
 ### Material removal engines
 
 **Settings → General → Material removal engine** switches Job and Patterns between **Height field** (default) and **Volume (experimental)**. Volume models a solid at the selected resolution using cell centres and finite cutting lengths. It draws exposed cell faces, so diagonal edges can show steps. Volume currently supports the same linear-motion flat cutter and V-bit inputs as Height field. Model deviation remains available in Height field. A volume budget error can be resolved by selecting a lower resolution or switching engines. The browser monitor uses Height field.
+
+
+In **Tool library → Geometry**, amber marks identify incomplete dimensions used by stock removal. Flat cutters need a cutting diameter and flute length. Tapered engraving tools also need a tip diameter and either an included point angle or a taper half-angle. When the published diameter describes the tip, the preview uses the documented outer cutting diameter or engraving shoulder. The bundled Fusion presets named Aluminum or Aluminium count as aluminium recipes when the material selector is blank, including in existing project tools. Presets with explicitly selected materials retain that selection.

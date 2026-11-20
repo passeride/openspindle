@@ -1,3 +1,4 @@
+import { matchesCuttingMaterial } from "@/domain/tools/tool"
 import { kitForPlate } from "@/domain/fixtures/catalog"
 import { toast } from "sonner"
 import {
@@ -26,11 +27,12 @@ export function PatternPage({ operationId }: { operationId: string | null }) {
       pattern?.tools.find((binding) => binding.local === local)?.plate ?? local
     const toolId = plate.tools.find((item) => item.number === number)?.toolId
     const tool = tools.find((item) => item.id === toolId)
-    const matches = tool?.presets.filter(
-      (preset) => preset.material === material
+    const matches = tool?.presets.filter((preset) =>
+      matchesCuttingMaterial(preset, material)
     )
     if (matches?.length !== 1) return null
-    const { rpm, feedRate, plungeFeed } = matches[0]
+    const { feedRate, plungeFeed } = matches[0]
+    const rpm = Math.round(matches[0].rpm ?? 0)
     const range = kitForPlate(plate).spindleRange
     if (
       !rpm ||

@@ -23,13 +23,20 @@ export const RemovalCutterSchema = z.discriminatedUnion("kind", [
 ])
 export type RemovalCutter = z.infer<typeof RemovalCutterSchema>
 
+export function removalToolShape(kind: string) {
+  const key = toolKindKey(kind)
+  if (["flat end mill", "face mill"].includes(key)) return "flat"
+  if (["chamfer mill", "engraving", "counter sink"].includes(key))
+    return "v-bit"
+  return null
+}
+
 /** Cutting geometry only; facing retains its separate flat-cutter requirement. */
 export function removalCutter(tool: Tool | undefined): Result<RemovalCutter> {
   if (!tool) return fail("Assign a library cutter to this tool number.")
   const kind = toolKindKey(tool.kind)
-  const flat = ["flat end mill", "face mill"].includes(kind)
-  const pointed = ["chamfer mill", "engraving", "counter sink"].includes(kind)
-  if (!flat && !pointed)
+  const shape = removalToolShape(kind)
+  if (!shape)
     return fail("Removal supports flat end mills, face mills and V-bits.")
   const { geometry, diameter } = tool
   if (diameter === null || diameter <= 0)
@@ -38,7 +45,7 @@ export function removalCutter(tool: Tool | undefined): Result<RemovalCutter> {
     return fail("Enter the cutting length in the tool library.")
   if ((geometry.cornerRadius ?? 0) !== 0)
     return fail("Rounded cutting edges are outside this removal model.")
-  if (flat) {
+  if (shape === "flat") {
     if (
       (geometry.taperAngle ?? 0) !== 0 ||
       (geometry.tipDiameter !== null && geometry.tipDiameter !== diameter) ||
@@ -61,15 +68,21 @@ export function removalCutter(tool: Tool | undefined): Result<RemovalCutter> {
       "Enter a V-bit point angle between 0 and 180 degrees, or a taper angle between 0 and 90 degrees, in the tool library."
     )
   const tip = geometry.tipDiameter
-  if (tip === null || tip < 0 || tip >= diameter)
-    return fail(
-      "Enter a V-bit tip diameter smaller than its cutting diameter; use 0 for a sharp point."
-    )
+  if (tip === null || tip < 0)
+    return fail("Enter a V-bit tip diameter; use 0 for a sharp point.")
   const slope = 1 / Math.tan((halfAngle * Math.PI) / 180)
+  // Engraving tools in Fusion use DC for the tip, not the wide end.
+  const outerDiameter =
+    geometry.maxDiameter ??
+    (kind === "engraving" && diameter === tip
+      ? geometry.shoulderDiameter
+      : diameter)
+  if (outerDiameter === null || outerDiameter <= tip)
+    return fail("Enter a maximum cutting diameter larger than the V-bit tip.")
   return ok({
     kind: "v-bit",
     cuttingLength: geometry.fluteLength,
-    radius: Math.min(diameter / 2, tip / 2 + geometry.fluteLength / slope),
+    radius: Math.min(outerDiameter / 2, tip / 2 + geometry.fluteLength / slope),
     tipRadius: tip / 2,
     slope,
   })

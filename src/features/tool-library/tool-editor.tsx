@@ -27,13 +27,20 @@ import {
 } from "@/components/ui/item"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FilePicker } from "@/components/file-picker"
+import { removalToolShape } from "@/domain/tools/removal-cutter"
 import { ToolImage } from "@/components/workspace/tool-image"
 import {
   createHolder,
   createPreset,
   defaultProbeProfile,
+  toolKindKey,
 } from "@/domain/tools/tool"
-import type { ProbeProfile, ToolSegment, ToolSource } from "@/domain/tools/tool"
+import type {
+  ProbeProfile,
+  ToolDraft,
+  ToolSegment,
+  ToolSource,
+} from "@/domain/tools/tool"
 import { OptionSelect } from "@/components/option-select"
 import { DEFAULT_PROBE_TIP_DIAMETER } from "@/domain/tools/probe-diameter"
 import { toolKindLabel } from "./tool-format"
@@ -330,27 +337,93 @@ function GeneralSection({ form, source }: SectionProps) {
 
 function GeometrySection({ form }: SectionProps) {
   return (
+    <form.Subscribe selector={(state) => state.values}>
+      {(draft) => <GeometryFields form={form} draft={draft} />}
+    </form.Subscribe>
+  )
+}
+
+function GeometryFields({
+  form,
+  draft,
+}: Pick<SectionProps, "form"> & { draft: ToolDraft }) {
+  const probing = draft.probe !== null
+  const shape = probing ? null : removalToolShape(draft.kind)
+  const geometry = draft.geometry
+  const vBit = shape === "v-bit"
+  const angleValid =
+    (geometry.taperAngle !== null &&
+      geometry.taperAngle > 0 &&
+      geometry.taperAngle < 90) ||
+    (geometry.pointAngle !== null &&
+      geometry.pointAngle > 0 &&
+      geometry.pointAngle < 180)
+  return (
     <FieldGroup className="grid grid-cols-2 gap-4">
-      <form.Subscribe selector={(state) => state.values.probe !== null}>
-        {(probing) => (
-          <form.AppField name="diameter">
-            {(field) => (
-              <field.NumberField
-                label={probing ? "Probe tip diameter" : "Cutting diameter"}
-                unit="mm"
-              />
-            )}
-          </form.AppField>
+      {shape && (
+        <FieldDescription className="col-span-full">
+          Warning marks show geometry that needs attention before stock removal
+          can be previewed.
+        </FieldDescription>
+      )}
+      <form.AppField name="diameter">
+        {(field) => (
+          <field.NumberField
+            label={probing ? "Probe tip diameter" : "Cutting diameter"}
+            unit="mm"
+            hint={
+              shape
+                ? "Used to calculate the width of the stock removed by this tool."
+                : undefined
+            }
+            warning={
+              !!shape && !(draft.diameter !== null && draft.diameter > 0)
+            }
+          />
         )}
-      </form.Subscribe>
+      </form.AppField>
       <form.AppField name="geometry.maxDiameter">
-        {(field) => <field.NumberField label="Maximum diameter" unit="mm" />}
+        {(field) => (
+          <field.NumberField
+            label="Maximum diameter"
+            unit="mm"
+            hint={
+              vBit
+                ? "Enter the wide end of the cutting profile when Cutting diameter describes only the tip."
+                : undefined
+            }
+            warning={
+              vBit &&
+              geometry.tipDiameter !== null &&
+              (geometry.maxDiameter ??
+                (toolKindKey(draft.kind) === "engraving" &&
+                draft.diameter === geometry.tipDiameter
+                  ? geometry.shoulderDiameter
+                  : draft.diameter) ??
+                0) <= geometry.tipDiameter
+            }
+          />
+        )}
       </form.AppField>
       <form.AppField name="geometry.shankDiameter">
         {(field) => <field.NumberField label="Shank diameter" unit="mm" />}
       </form.AppField>
       <form.AppField name="geometry.fluteLength">
-        {(field) => <field.NumberField label="Flute length" unit="mm" />}
+        {(field) => (
+          <field.NumberField
+            label="Flute length"
+            unit="mm"
+            hint={
+              shape
+                ? "Measure the axial length of the cutting edges. Stock removal needs this to limit engagement."
+                : undefined
+            }
+            warning={
+              !!shape &&
+              !(geometry.fluteLength !== null && geometry.fluteLength > 0)
+            }
+          />
+        )}
       </form.AppField>
       <form.AppField name="geometry.overallLength">
         {(field) => <field.NumberField label="Overall length" unit="mm" />}
@@ -389,18 +462,51 @@ function GeometrySection({ form }: SectionProps) {
         {(field) => <field.NumberField label="Upper radius" unit="mm" />}
       </form.AppField>
       <form.AppField name="geometry.tipDiameter">
-        {(field) => <field.NumberField label="Tip diameter" unit="mm" />}
+        {(field) => (
+          <field.NumberField
+            label="Tip diameter"
+            unit="mm"
+            hint={
+              vBit
+                ? "Enter the diameter of the flat at the very tip. Use 0 for a sharp point."
+                : undefined
+            }
+            warning={vBit && geometry.tipDiameter === null}
+          />
+        )}
       </form.AppField>
       <form.AppField name="geometry.tipLength">
         {(field) => <field.NumberField label="Tip length" unit="mm" />}
       </form.AppField>
       <form.AppField name="geometry.pointAngle">
         {(field) => (
-          <field.NumberField label="Point angle" unit="°" max={180} />
+          <field.NumberField
+            label="Point angle"
+            unit="°"
+            max={180}
+            hint={
+              vBit
+                ? "Full included angle. Enter either Point angle or Taper angle for stock removal."
+                : undefined
+            }
+            warning={vBit && !angleValid}
+          />
         )}
       </form.AppField>
       <form.AppField name="geometry.taperAngle">
-        {(field) => <field.NumberField label="Taper angle" unit="°" max={90} />}
+        {(field) => (
+          <field.NumberField
+            label="Taper angle"
+            unit="°"
+            max={90}
+            hint={
+              vBit
+                ? "Half-angle measured from the tool axis. Either angle field is sufficient."
+                : undefined
+            }
+            warning={vBit && !angleValid}
+          />
+        )}
       </form.AppField>
       <form.AppField name="geometry.taperedTip">
         {(field) => (
