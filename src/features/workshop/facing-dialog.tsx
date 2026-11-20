@@ -1,5 +1,7 @@
+import { plateMachining } from "@/domain/compile/toolpath-bounds"
+import { SpeedsFeeds } from "./speeds-feeds"
 import { bedOffsetOf } from "@/domain/anchors/stored-anchors"
-import { useId, useState } from "react"
+import { useEffect, useId, useMemo, useState } from "react"
 import { useForm } from "@tanstack/react-form"
 import { z } from "zod"
 import { toast } from "sonner"
@@ -302,6 +304,7 @@ function FacingFields({
 }
 
 type FacingEditorProps = {
+  onPreview?: (params: FacingParams) => void
   plateId?: string
   operationId?: string
   onSaved?: (plateId: string, operationId: string) => void
@@ -319,6 +322,7 @@ export function FacingEditor({
   operationId,
   onClose,
   onSaved,
+  onPreview,
 }: FacingEditorProps) {
   const workspace = useWorkspaceStore()
   const selected = useWorkspace(selectedPlate)
@@ -347,6 +351,15 @@ export function FacingEditor({
     const stock = plate?.setup.stock
     const origin = plate?.setup.workOrigin ?? [0, 0, 0]
     const anchor = plate?.setup.stockAnchor ?? [0, 0, 0]
+    const matching =
+      tool?.presets.filter(
+        (preset) => stock && preset.material === stock.material
+      ) ?? []
+    const preset = matching.length === 1 ? matching[0] : undefined
+    const range = plate && kitForPlate(plate).spindleRange
+    const rpm = preset?.rpm ?? 0
+    const usePreset =
+      rpm > 0 && (!range || (rpm >= range.min && rpm <= range.max))
     return {
       x: anchor[0] - origin[0],
       y: anchor[1] - origin[1],
@@ -358,14 +371,17 @@ export function FacingEditor({
       stepdown: 0.1,
       stepover: (tool?.diameter ?? 1) / 2,
       clearance: 5,
-      rpm: 0,
-      feed: 0,
-      plunge: 0,
+      rpm: usePreset ? rpm : 0,
+      feed: usePreset ? (preset?.feedRate ?? 0) : 0,
+      plunge: usePreset ? (preset?.plungeFeed ?? 0) : 0,
     }
   })
   const [valid, setValid] = useState(
     FacingParamsSchema.safeParse(params).success
   )
+  useEffect(() => {
+    onPreview?.(params)
+  }, [onPreview, params])
   const draft = useProbingDraft(params, setParams)
   const [presetId, setPresetId] = useState("")
   const [presetName, setPresetName] = useState("")
@@ -387,6 +403,49 @@ export function FacingEditor({
       ? (facingEntryFrameIssue(params, plate.setup) ??
         facingPocketPaths(params, facingKeepOuts(plate.setup, kit)).issue)
       : null
+  const stock = plate?.setup.stock
+  const firstTarget =
+    plate?.operations.findIndex(
+      (item) =>
+        !item.suppressed &&
+        item.source.kind !== "probing" &&
+        item.source.kind !== "facing"
+    ) ?? -1
+  const footprint = useMemo(() => {
+    if (!plate) return null
+    const start = operationId
+      ? plate.operations.findIndex((item) => item.id === operationId) + 1
+      : 0
+    const operations = plate.operations
+      .slice(start)
+      .filter(
+        (item) =>
+          !item.suppressed &&
+          item.source.kind !== "probing" &&
+          item.source.kind !== "facing"
+      )
+    return operations.length
+      ? plateMachining({ ...plate, operations }).workArea()
+      : null
+  }, [plate, operationId])
+  const fitArea = (
+    min: readonly [number, number],
+    max: readonly [number, number]
+  ) => {
+    if (!plate || !stock) return
+    const [x, y, originZ] = plate.setup.workOrigin
+    const next = {
+      ...params,
+      x: min[0] - x,
+      y: min[1] - y,
+      width: max[0] - min[0],
+      depth: max[1] - min[1],
+      top: plate.setup.stockAnchor[2] + stock.height - originZ,
+      entryConfirmed: false,
+    }
+    setParams(next)
+    setValid(FacingParamsSchema.safeParse(next).success)
+  }
   const guard =
     !plate ||
     issue !== null ||
@@ -449,6 +508,7 @@ export function FacingEditor({
         type: "operation.add",
         plateId: plate.id,
         operation: added,
+        index: firstTarget < 0 ? undefined : firstTarget,
         preferredTools: new Map([[nextSource.tool, tool.id]]),
       })
       if (!result.ok) {
@@ -498,6 +558,40 @@ export function FacingEditor({
         >
           Create a setup first
         </Button>
+      )}
+      {plate && stock && (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            onClick={() =>
+              fitArea(
+                [plate.setup.stockAnchor[0], plate.setup.stockAnchor[1]],
+                [
+                  plate.setup.stockAnchor[0] + stock.width,
+                  plate.setup.stockAnchor[1] + stock.depth,
+                ]
+              )
+            }
+          >
+            Face stock
+          </Button>
+          <Button
+            variant="outline"
+            disabled={
+              !footprint?.ok ||
+              footprint.covers !== "cuts" ||
+              footprint.area.min.some(
+                (value, axis) => value >= footprint.area.max[axis]
+              )
+            }
+            onClick={() => {
+              if (footprint?.ok && footprint.covers === "cuts")
+                fitArea(footprint.area.min, footprint.area.max)
+            }}
+          >
+            Fit to cutting operations
+          </Button>
+        </div>
       )}
       <Field>
         <FieldLabel>Cutter</FieldLabel>
@@ -684,6 +778,18 @@ export function FacingEditor({
         . Chip load = feed ÷ (RPM × cutting teeth); it is a calculation, not a
         suitability check.
       </FieldDescription>
+      {tool && (
+        <SpeedsFeeds
+          diameter={params.diameter}
+          teeth={tool.flutes ?? tool.geometry.numberOfTeeth ?? undefined}
+          maxRPM={kit?.spindleRange?.max}
+          onApply={(rpm, feed) => {
+            const next = { ...params, rpm, feed }
+            setParams(next)
+            setValid(FacingParamsSchema.safeParse(next).success)
+          }}
+        />
+      )}
       {tool && valid && (
         <ChipLoadCalculator
           tool={tool}

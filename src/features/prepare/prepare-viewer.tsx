@@ -322,11 +322,13 @@ function usePickTargets(
  * setup items can be selected, and moved with the move tool. Problems with a place on a bed are
  * marked there: picking one selects what it is about and shows it.
  */
-export function PrepareViewer() {
+export function PrepareViewer({
+  preview,
+}: { preview?: React.ComponentProps<typeof BedViewer>["preview"] } = {}) {
   const plates = useWorkspaceViewerPlates()
   const plate = useSelectedPlate()
   const selection = usePrepareSelection()
-  const camera = useViewerCamera()
+  const camera = useViewerCamera("workspace")
   const [style] = useVisualStyle()
   const focus = useProblemFocus()
   const shown = useShownProblem()
@@ -414,6 +416,7 @@ export function PrepareViewer() {
   return (
     <div className="relative h-full min-h-0 overflow-hidden bg-muted/20">
       <BedViewer
+        preview={preview}
         plates={plates}
         selectedPlateId={plate?.id ?? null}
         onSelectPlate={selection.selectPlate}
@@ -424,6 +427,7 @@ export function PrepareViewer() {
         progress={100}
         showRapids={false}
         showStock
+        orbit={camera.orbit}
         view={camera.view}
         style={style}
         resetKey={camera.resetKey}

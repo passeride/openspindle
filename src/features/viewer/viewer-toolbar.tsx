@@ -1,3 +1,4 @@
+import type { OrbitPose } from "@/components/workspace/viewer/bed-scene"
 import { useState } from "react"
 import type { ReactNode } from "react"
 import {
@@ -29,6 +30,7 @@ import { isVisualStyle, useVisualStyle } from "./visual-style"
 const ZOOM = { min: 0.2, max: 12, step: 0.25 } as const
 
 export type ViewerCamera = {
+  readonly orbit?: { current: OrbitPose | null }
   readonly view: ViewMode
   readonly zoom: number
   /** Changes to re-apply the view preset (and fit the bed). */
@@ -39,22 +41,43 @@ export type ViewerCamera = {
 }
 
 /** Camera state of one bed viewer: view preset, zoom and fit. */
-export function useViewerCamera(): ViewerCamera {
-  const [view, setViewMode] = useState<ViewMode>("perspective")
-  const [zoom, setZoom] = useState(1)
+const savedCamera = () => ({
+  view: "perspective" as ViewMode,
+  zoom: 1,
+  orbit: { current: null as OrbitPose | null },
+})
+const cameras = { workspace: savedCamera(), pattern: savedCamera() }
+
+export function useViewerCamera(scope?: keyof typeof cameras): ViewerCamera {
+  const saved = scope ? cameras[scope] : undefined
+  const [view, setViewMode] = useState<ViewMode>(
+    () => saved?.view ?? "perspective"
+  )
+  const [zoom, setZoomState] = useState(
+    () => saved?.orbit.current?.zoom ?? saved?.zoom ?? 1
+  )
+  const setView = (next: ViewMode) => {
+    if (saved) saved.view = next
+    setViewMode(next)
+  }
+  const setZoom = (next: number) => {
+    if (saved) saved.zoom = next
+    setZoomState(next)
+  }
   const [resetKey, setResetKey] = useState(0)
   return {
+    orbit: saved?.orbit,
     view,
     zoom,
     resetKey,
     setView: (next) => {
-      setViewMode(next)
+      setView(next)
       // Re-apply the preset even when this view is already selected.
       setResetKey((key) => key + 1)
     },
     setZoom,
     fit: () => {
-      setViewMode("perspective")
+      setView("perspective")
       setZoom(1)
       setResetKey((key) => key + 1)
     },

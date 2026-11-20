@@ -1,3 +1,4 @@
+import { SpeedsFeeds } from "@/features/workshop/speeds-feeds"
 import { useEffect, useRef, useState } from "react"
 import { Copy, Download, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -12,6 +13,9 @@ import { PATTERN_PRESETS, defaultPattern } from "./presets"
 
 type Props = {
   initial?: PatternSpec
+  libraryCutting?: (
+    local: number
+  ) => Pick<PatternSpec, "rpm" | "feed" | "plunge"> | null
   onApply?: (definition: PatternSpec, output: LayeredOutput) => void
 }
 
@@ -50,7 +54,7 @@ function Numeric({
 }
 
 /** Standalone editor: no Electron, machine RPC, project store or implicit machine commands. */
-export function PatternEditor({ initial, onApply }: Props) {
+export function PatternEditor({ initial, onApply, libraryCutting }: Props) {
   const [document, setDocument] = useState<PatternSpec>(() =>
     structuredClone(initial ?? defaultPattern())
   )
@@ -246,7 +250,16 @@ export function PatternEditor({ initial, onApply }: Props) {
                       size="sm"
                       className="h-auto justify-start text-left whitespace-normal"
                       title={item.description}
-                      onClick={() => changeSpec(structuredClone(item.spec))}
+                      onClick={() =>
+                        changeSpec({
+                          ...structuredClone(item.spec),
+                          tool: spec.tool,
+                          rpm: spec.rpm,
+                          feed: spec.feed,
+                          plunge: spec.plunge,
+                          safeZ: spec.safeZ,
+                        })
+                      }
                     >
                       {item.name}
                     </Button>
@@ -374,6 +387,19 @@ export function PatternEditor({ initial, onApply }: Props) {
               </section>
               <section className="flex flex-col gap-2">
                 <h2 className="text-sm font-medium">Sampling and machining</h2>
+                <SpeedsFeeds onApply={(rpm, feed) => update({ rpm, feed })} />
+                {libraryCutting?.(spec.tool) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const cutting = libraryCutting(spec.tool)
+                      if (cutting) update(cutting)
+                    }}
+                  >
+                    Use cutter preset for stock material
+                  </Button>
+                )}
                 <div className="grid grid-cols-2 gap-2">
                   <Numeric
                     label="t min"

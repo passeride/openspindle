@@ -38,7 +38,7 @@ export function PatternPreview({
   width: number
   hidden: ReadonlySet<number>
 }) {
-  const camera = useViewerCamera()
+  const camera = useViewerCamera("pattern")
   const [style] = useVisualStyle()
   const [angle, setAngle] = useState(90)
   const [diameter, setDiameter] = useState(3)
@@ -253,6 +253,7 @@ export function PatternPreview({
           preview={preview}
           showRapids={false}
           showStock={removal && !!grid}
+          orbit={camera.orbit}
           view={camera.view}
           style={style}
           resetKey={camera.resetKey}

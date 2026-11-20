@@ -26,6 +26,7 @@ import type {
   MachineOrigin,
   ViewMode,
   PreviewStroke,
+  OrbitPose,
 } from "./viewer/bed-scene"
 import type { VisualStyle } from "./viewer/solid-style"
 import type { ArrangeEvents, ArrangeView } from "./viewer/setup-arranger"
@@ -51,11 +52,13 @@ export type {
 } from "./viewer/setup-arranger"
 type Props = {
   preview?: {
-    bounds: ViewerBounds
+    bounds?: ViewerBounds
+    plateId?: string
     strokes: readonly PreviewStroke[]
     width: number
   }
 
+  orbit?: { current: OrbitPose | null }
   layers?: ViewerLayers
   removal?: { readonly plateId: string; readonly grid: RemovalGrid } | null
   plates: ViewerPlate[]
@@ -102,6 +105,7 @@ type Props = {
 
 export function BedViewer({
   preview,
+  orbit,
   layers,
   removal,
   plates,
@@ -135,6 +139,7 @@ export function BedViewer({
   const select = useRef(onSelectPlate)
   const zoomChange = useRef(onZoomChange)
   const arrange = useRef(onArrange)
+  const restored = useRef(false)
   const sceneRef = useRef<BedScene | null>(null)
   const models = useOptionalHost()?.models
   const [error, setError] = useState("")
@@ -179,6 +184,8 @@ export function BedViewer({
     )
     sceneRef.current = scene
     return () => {
+      if (orbit) orbit.current = scene.orbitPose()
+      restored.current = false
       scene.dispose()
       sceneRef.current = null
     }
@@ -243,8 +250,13 @@ export function BedViewer({
     if (shownProblem) sceneRef.current?.reveal(shownProblem)
   }, [shownProblem])
   useEffect(() => {
-    sceneRef.current?.setView(view)
-  }, [view, resetKey])
+    const scene = sceneRef.current
+    if (!scene) return
+    const pose = restored.current ? null : orbit?.current
+    scene.setView(view)
+    if (pose) scene.restoreOrbit(pose)
+    restored.current = true
+  }, [view, resetKey, orbit])
   useEffect(() => {
     sceneRef.current?.setZoom(zoom)
   }, [zoom, resetKey])

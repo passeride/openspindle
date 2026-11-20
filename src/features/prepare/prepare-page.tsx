@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import { useDefaultLayout } from "react-resizable-panels"
 import {
   ResizableHandle,
@@ -10,7 +11,10 @@ import { PrepareViewer } from "./prepare-viewer"
 import { BedSetupField, DeviceCard } from "./sidebar-header"
 
 /** Plates and their operations: set up stock, tools and fixtures, and preview them on the bed. */
-export function PreparePage() {
+export function PreparePage({
+  sidebar,
+  viewer,
+}: { sidebar?: ReactNode; viewer?: ReactNode } = {}) {
   const layout = useDefaultLayout({
     id: "spinnvill-prepare",
     panelIds: ["sidebar", "viewer"],
@@ -31,17 +35,21 @@ export function PreparePage() {
         groupResizeBehavior="preserve-pixel-size"
       >
         <aside className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
-          <div className="flex shrink-0 flex-col gap-3 p-3">
-            <DeviceCard />
-            <BedSetupField />
-          </div>
-          <PlateTree className="max-h-[45%] shrink-0" />
-          <PrepareInspector />
+          {sidebar ?? (
+            <>
+              <div className="flex shrink-0 flex-col gap-3 p-3">
+                <DeviceCard />
+                <BedSetupField />
+              </div>
+              <PlateTree className="max-h-[45%] shrink-0" />
+              <PrepareInspector />
+            </>
+          )}
         </aside>
       </ResizablePanel>
       <ResizableHandle withHandle aria-label="Resize side panel" />
       <ResizablePanel id="viewer" minSize={320}>
-        <PrepareViewer />
+        {viewer ?? <PrepareViewer />}
       </ResizablePanel>
     </ResizablePanelGroup>
   )

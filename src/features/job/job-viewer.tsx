@@ -77,7 +77,7 @@ export function JobViewer({
     layers.deviation
   )
   const dispatch = useDispatch()
-  const camera = useViewerCamera()
+  const camera = useViewerCamera("workspace")
   const [style] = useVisualStyle()
   const telemetry = useFreshTelemetry()
   const machineOrigin = useMachineOrigin(shown?.plate ?? null, telemetry)
@@ -97,6 +97,7 @@ export function JobViewer({
         hiddenLineRanges={hiddenLineRanges}
         showRapids={layers.rapids}
         showStock={layers.stock}
+        orbit={camera.orbit}
         view={camera.view}
         style={style}
         resetKey={camera.resetKey}

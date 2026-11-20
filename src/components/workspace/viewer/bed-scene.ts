@@ -59,9 +59,12 @@ import { ViewerStage } from "./viewer-stage"
  */
 export type ViewMode = "perspective" | "top" | "front" | "camera"
 
+export type OrbitPose = { position: Point3; target: Point3; zoom: number }
+
 export type PreviewStroke = {
   readonly color: string
   readonly positions: Float32Array
+  readonly through?: boolean
 }
 
 /** Viewer-wide display state; only the selected plate follows playback and selection. */
@@ -357,14 +360,17 @@ export class BedScene {
   }
 
   setPreview(preview?: {
-    bounds: ViewerBounds
+    bounds?: ViewerBounds
+    plateId?: string
     strokes: readonly PreviewStroke[]
     width: number
   }) {
     const previousBounds = this.previewBounds
-    const plate = this.plates.at(0)
+    const plate = preview?.plateId
+      ? this.plates.find((item) => item.id === preview.plateId)
+      : this.plates.at(0)
     const offset = plate ? (this.offsetOf(plate.id) ?? 0) : 0
-    this.previewBounds = preview
+    this.previewBounds = preview?.bounds
       ? {
           min: [
             preview.bounds.min[0] + offset,
@@ -391,8 +397,11 @@ export class BedScene {
           color: stroke.color,
           linewidth: preview?.width ?? 1,
           toneMapped: false,
+          depthTest: !stroke.through,
+          depthWrite: !stroke.through,
         })
         const line = new LineSegments2(geometry, material)
+        if (stroke.through) line.renderOrder = 8
         this.previewLines.push(line)
         this.previewGroup.add(line)
       }
@@ -574,6 +583,21 @@ export class BedScene {
     this.controls.target.add(shift)
     this.controls.update()
     this.stage.invalidate()
+  }
+
+  orbitPose(): OrbitPose {
+    return {
+      position: this.camera.position.toArray(),
+      target: this.controls.target.toArray(),
+      zoom: this.camera.zoom,
+    }
+  }
+
+  restoreOrbit(pose: OrbitPose) {
+    this.camera.position.fromArray(pose.position)
+    this.controls.target.fromArray(pose.target)
+    this.controls.update()
+    this.setZoom(pose.zoom)
   }
 
   setZoom(zoom: number) {
