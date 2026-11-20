@@ -52,7 +52,7 @@ function engagedRadius(cutter: RemovalCutter, lowest: number, top: number) {
 }
 
 /** Lowest cone surface over a linear XYZ sweep, including the truncated flat tip. */
-function coneHeight(
+export function coneHeight(
   cutter: Extract<RemovalCutter, { kind: "v-bit" }>,
   tipZ: number,
   dz: number,
