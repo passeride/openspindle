@@ -8,3 +8,6 @@ export const RemovalResolutionSchema = z.union([
 ])
 export type RemovalResolution = z.infer<typeof RemovalResolutionSchema>
 export const DEFAULT_REMOVAL_RESOLUTION: RemovalResolution = 512
+
+export const RemovalEngineSchema = z.enum(["height-field", "volume"])
+export type RemovalEngine = z.infer<typeof RemovalEngineSchema>

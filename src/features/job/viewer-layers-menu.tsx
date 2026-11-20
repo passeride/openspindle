@@ -130,8 +130,10 @@ export function ViewerLayersMenu({
               )}
               {showRemoval && removal.grid && (
                 <FieldDescription className="font-numeric">
-                  {removal.grid.columns} × {removal.grid.rows} ·{" "}
-                  {removal.grid.resolution.toFixed(3)} mm
+                  {removal.grid.columns} × {removal.grid.rows}
+                  {removal.grid.layers
+                    ? ` × ${removal.grid.layers}`
+                    : ""} · {removal.grid.resolution.toFixed(3)} mm
                 </FieldDescription>
               )}
               {layers.deviation && (

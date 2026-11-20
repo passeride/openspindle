@@ -110,3 +110,8 @@ Facing uses the Prepare layout and 3D viewer. The yellow grid marks the requeste
 The feeds and speeds calculator in Facing and Patterns takes cutting speed and chip load from your cutter's material data. It calculates RPM using effective cutting diameter and feed using the resulting RPM and number of edges. It recomputes feed when the spindle limit caps RPM. Use manufacturer plunge data separately. Facing prefers compatible tools already on the plate. For new operations, a unique complete preset for the stock material loads when the tool is selected. Existing operations keep their settings until you choose a preset. If there are several matches, choose from the list.
 
 Prepare, Job and Facing remember the shared orbit, pan and zoom while switching tabs. Patterns remembers its own close-up camera. The previous frame stays visible until the destination viewer paints.
+
+
+### Material removal engines
+
+**Settings → General → Material removal engine** switches Job and Patterns between **Height field** (default) and **Volume (experimental)**. Volume models a solid at the selected resolution using cell centres and finite cutting lengths. It draws exposed cell faces, so diagonal edges can show steps. Volume currently supports the same linear-motion flat cutter and V-bit inputs as Height field. Model deviation remains available in Height field. A volume budget error can be resolved by selecting a lower resolution or switching engines. The browser monitor uses Height field.

@@ -5,11 +5,16 @@ import { toolKindKey } from "./tool"
 import type { Tool } from "./tool"
 
 export const RemovalCutterSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("flat"), radius: z.number().positive() }),
+  z.object({
+    kind: z.literal("flat"),
+    radius: z.number().positive(),
+    cuttingLength: z.number().positive().optional(),
+  }),
   z
     .object({
       kind: z.literal("v-bit"),
       radius: z.number().positive(),
+      cuttingLength: z.number().positive().optional(),
       tipRadius: z.number().nonnegative(),
       /** Height above the tip per millimetre of radius beyond the flat tip. */
       slope: z.number().positive(),
@@ -40,7 +45,11 @@ export function removalCutter(tool: Tool | undefined): Result<RemovalCutter> {
       (geometry.maxDiameter !== null && geometry.maxDiameter !== diameter)
     )
       return fail("This cutter needs a straight, flat-ended profile.")
-    return ok({ kind: "flat", radius: diameter / 2 })
+    return ok({
+      kind: "flat",
+      radius: diameter / 2,
+      cuttingLength: geometry.fluteLength,
+    })
   }
   // Same convention as the tool viewer: taper angle is measured from the axis;
   // point angle is the full included angle (90 degrees means a 45-degree taper).
@@ -59,6 +68,7 @@ export function removalCutter(tool: Tool | undefined): Result<RemovalCutter> {
   const slope = 1 / Math.tan((halfAngle * Math.PI) / 180)
   return ok({
     kind: "v-bit",
+    cuttingLength: geometry.fluteLength,
     radius: Math.min(diameter / 2, tip / 2 + geometry.fluteLength / slope),
     tipRadius: tip / 2,
     slope,

@@ -14,7 +14,10 @@ import { isAppearance } from "@/lib/appearance"
 import { FONTS, FONT_CHOICES, isFontFor } from "@/lib/fonts"
 import type { FontRole } from "@/lib/fonts"
 import { useSimulatorStatus, useUpdateSimulator } from "@/platform/simulator"
-import { useRemovalResolution } from "@/app/job/removal-preferences"
+import {
+  useRemovalEngine,
+  useRemovalResolution,
+} from "@/app/job/removal-preferences"
 
 import { useProbingPreferences } from "@/app/probing/probing-preferences"
 
@@ -54,6 +57,7 @@ const simulatorHint = (host: string, port: number) =>
 
 /** Settings › General: appearance and the simulated Z1. Changes apply at once. */
 export function GeneralSettings() {
+  const engine = useRemovalEngine()
   const removal = useRemovalResolution()
   const probing = useProbingPreferences()
   const { appearance, setAppearance, fonts, setFont, saveError } =
@@ -98,6 +102,26 @@ export function GeneralSettings() {
         </Field>
       ))}
       {saveError && <FieldError>{saveError}</FieldError>}
+      <Field>
+        <FieldLabel htmlFor="removal-engine">
+          Material removal engine
+        </FieldLabel>
+        <OptionSelect
+          id="removal-engine"
+          value={engine.engine}
+          onValueChange={engine.update}
+          options={[
+            { value: "height-field", label: "Height field (default)" },
+            { value: "volume", label: "Volume (experimental)" },
+          ]}
+        />
+        <FieldDescription>
+          Applies to Job and Patterns. Volume draws a sampled 3D solid for
+          supported flat cutters and V-bits. Model deviation is available with
+          Height field.
+        </FieldDescription>
+        {engine.saveError && <FieldError>{engine.saveError}</FieldError>}
+      </Field>
       <Field>
         <FieldLabel htmlFor="removal-resolution">
           Material removal resolution

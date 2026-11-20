@@ -17,7 +17,10 @@ import { PLAIN_NC, readNcUnit } from "@/domain/compile/nc-unit"
 import { kitForPlate } from "@/domain/fixtures/catalog"
 import { implicitToolMoves } from "@/domain/tools/implicit-tool"
 import { toViewerPlate } from "@/features/viewer/viewer-plate"
-import { useRemovalResolution } from "@/app/job/removal-preferences"
+import {
+  useRemovalEngine,
+  useRemovalResolution,
+} from "@/app/job/removal-preferences"
 import type { RemovalResolution } from "@/domain/tools/removal-resolution"
 
 function removalInput(
@@ -194,6 +197,7 @@ export function useMaterialRemoval(
 ) {
   const index = usePlanIndex(shown)
   const library = useWorkspace((state) => state.tools)
+  const { engine } = useRemovalEngine()
   const { resolution } = useRemovalResolution()
   const prepared = useMemo(() => {
     const candidate = enabled
@@ -205,6 +209,13 @@ export function useMaterialRemoval(
         )
       : { input: null, problem: null }
     if (candidate.input && deviation) {
+      if (engine === "volume")
+        return {
+          input: null,
+          problem:
+            "Switch to Height field in Settings to compare against a model.",
+        }
+
       const reference = shown?.plate.setup.reference
       if (!reference)
         return {
@@ -215,7 +226,7 @@ export function useMaterialRemoval(
       return { ...candidate, input: { ...candidate.input, reference } }
     }
     return candidate
-  }, [enabled, shown, index, library, resolution, deviation])
+  }, [enabled, shown, index, library, resolution, deviation, engine])
   const [state, setState] = useState<State>({
     input: null,
     grid: null,
@@ -255,6 +266,7 @@ export function useMaterialRemoval(
       }))
       worker.postMessage({
         id: ++serial,
+        engine,
         cursor: wanted,
         input: first ? input : undefined,
       })
@@ -358,7 +370,7 @@ export function useMaterialRemoval(
       if (timer) clearTimeout(timer)
       worker.terminate()
     }
-  }, [prepared.input, index, frames])
+  }, [prepared.input, index, frames, engine])
   if (!enabled) return { grid: null, problem: null, pending: false }
   if (!prepared.input)
     return { grid: null, problem: prepared.problem, pending: false }

@@ -30,6 +30,8 @@ export const RemovalInputSchema = z.object({
 })
 export type RemovalInput = z.infer<typeof RemovalInputSchema>
 export type RemovalGrid = {
+  volumePositions?: Float32Array
+  layers?: number
   deviation?: Float32Array
   columns: number
   rows: number

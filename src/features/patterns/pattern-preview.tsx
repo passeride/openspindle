@@ -1,3 +1,7 @@
+import {
+  useRemovalEngine,
+  useRemovalResolution,
+} from "@/app/job/removal-preferences"
 import { useEffect, useMemo, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { BedViewer } from "@/components/workspace/bed-viewer"
@@ -38,6 +42,8 @@ export function PatternPreview({
   width: number
   hidden: ReadonlySet<number>
 }) {
+  const { engine } = useRemovalEngine()
+  const { resolution } = useRemovalResolution()
   const camera = useViewerCamera("pattern")
   const [style] = useVisualStyle()
   const [angle, setAngle] = useState(90)
@@ -93,15 +99,20 @@ export function PatternPreview({
       kind: "v-bit",
       radius: diameter / 2,
       tipRadius: tip / 2,
+      cuttingLength: (diameter - tip) / (2 * Math.tan((angle * Math.PI) / 360)),
       slope: 1 / Math.tan((angle * Math.PI) / 360),
     }
     return {
       ...bounds,
-      resolution: 1024,
+      resolution: engine === "volume" ? resolution : 1024,
       segments: output.layers.flatMap((layer) => {
         if (layer.mask) return []
         const cutter: RemovalCutter = layer.cutterDiameter
-          ? { kind: "flat", radius: layer.cutterDiameter / 2 }
+          ? {
+              kind: "flat",
+              radius: layer.cutterDiameter / 2,
+              cuttingLength: bounds.max[2] - bounds.min[2],
+            }
           : engraver
         return layer.paths.flatMap((path) =>
           path.map((end, i) => ({
@@ -112,7 +123,7 @@ export function PatternPreview({
         )
       }),
     }
-  }, [angle, bounds, diameter, output, removal, tip, valid])
+  }, [angle, bounds, diameter, engine, output, removal, resolution, tip, valid])
   useEffect(() => {
     if (!input) return
     const worker = new Worker(
@@ -133,6 +144,7 @@ export function PatternPreview({
       () =>
         worker.postMessage({
           id: 1,
+          engine,
           input,
           cursor: { move: input.segments.length, fraction: 1 },
         }),
@@ -142,7 +154,7 @@ export function PatternPreview({
       window.clearTimeout(timer)
       worker.terminate()
     }
-  }, [input])
+  }, [engine, input])
   const grid = input && state?.input === input ? state.grid : null
   const strokes = useMemo(
     () =>

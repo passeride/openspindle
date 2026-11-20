@@ -399,6 +399,23 @@ function stockObjects(
   const bounds = plateStockBounds(plate)
   if (!stock || !bounds) return []
   const { top, body } = stockFaces(stock)
+  if (removal?.volumePositions) {
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute(
+      "position",
+      new THREE.BufferAttribute(removal.volumePositions, 3)
+    )
+    geometry.computeVertexNormals()
+    const material = new THREE.MeshStandardMaterial({
+      color: top.color,
+      metalness: top.metalness,
+      roughness: top.roughness,
+    })
+    const mesh = new THREE.Mesh(geometry, material)
+    mesh.position.set(...plate.stockAnchor)
+    mesh.renderOrder = 1
+    return [mesh]
+  }
   if (removal) {
     const geometry = new RemovalStockGeometry(plate, removal)
     const mesh = new THREE.Mesh(
@@ -999,6 +1016,7 @@ export class PlateView {
       const grid = presentation.removal
       if (
         grid &&
+        !grid.volumePositions &&
         mesh instanceof THREE.Mesh &&
         mesh.geometry instanceof RemovalStockGeometry &&
         mesh.geometry.matches(grid) &&
