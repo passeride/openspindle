@@ -33,7 +33,7 @@ export const facingKind: OperationKind<"facing"> = {
     const keepOuts = facingKeepOuts(plate.setup, kit, p)
     if (!issue && keepOuts.length && !workOriginOnMachine(plate.setup)) {
       issue =
-        "Place work XY relative to a stored anchor so the automatic facing keep-outs can be located."
+        "Facing needs a fixed work XY to locate the clamps and tool setter. Open Facing and choose Use plate XY from anchor, or read anchors from the connected machine."
       fix = { kind: "read-anchors" }
     }
     const index = plate.operations.findIndex((item) => item.id === operation.id)

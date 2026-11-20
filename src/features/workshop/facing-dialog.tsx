@@ -1,3 +1,5 @@
+import { workOriginOnMachine } from "@/domain/plate/work-origin"
+import { useReadAnchorsFix } from "@/features/prepare/quick-fix"
 import { plateMachining } from "@/domain/compile/toolpath-bounds"
 import { SpeedsFeeds } from "./speeds-feeds"
 import { bedOffsetOf } from "@/domain/anchors/stored-anchors"
@@ -425,6 +427,19 @@ export function FacingEditor({
   const preset = tool?.presets.find((item) => item.id === presetId)
   const kit = plate ? kitForPlate(plate) : null
   const keepOuts = plate && kit ? facingKeepOuts(plate.setup, kit, params) : []
+  const originUnresolved =
+    !!plate && keepOuts.length > 0 && !workOriginOnMachine(plate.setup)
+  const anchor = plate?.setup.anchors?.anchors.at(0)
+  const readAnchors = useReadAnchorsFix(plate?.id ?? null)
+  const usePlateOrigin = () => {
+    if (!plate || !anchor) return
+    const result = workspace.dispatch({
+      type: "plate.setup",
+      plateId: plate.id,
+      patch: { workOriginAnchor: anchor.id, machineOrigin: false },
+    })
+    if (!result.ok) toast.error(result.error)
+  }
   const pocketIssue =
     plate && kit
       ? (facingEntryFrameIssue(params, plate.setup) ??
@@ -561,6 +576,37 @@ export function FacingEditor({
   )
   const fields = (
     <FieldGroup>
+      {originUnresolved && (
+        <div className="space-y-2 rounded-md border p-3">
+          <p className="text-sm font-medium">
+            Set work XY for fixture clearance
+          </p>
+          <FieldDescription>
+            Facing needs a fixed work origin to locate protected areas. Using
+            plate XY keeps the current position in the preview and sets that XY
+            from the anchor when the job starts.
+          </FieldDescription>
+          <div className="flex flex-wrap gap-2">
+            {anchor && (
+              <Button variant="outline" size="sm" onClick={usePlateOrigin}>
+                Use plate XY from {anchor.name}
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={readAnchors.pending || !!readAnchors.reason}
+              title={readAnchors.reason ?? undefined}
+              onClick={readAnchors.run}
+            >
+              Read anchors
+            </Button>
+          </div>
+          {readAnchors.reason && !anchor && (
+            <FieldDescription>{readAnchors.reason}</FieldDescription>
+          )}
+        </div>
+      )}
       {keepOuts.length > 0 && (
         <FieldDescription>
           Protected:{" "}

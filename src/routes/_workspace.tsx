@@ -30,7 +30,7 @@ function WorkspaceLayout() {
     <FileDropZone>
       <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background">
         {/* Doubles as the desktop title bar: it drags the window and clears the traffic lights. */}
-        <header className="grid shrink-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-4 border-b ps-[env(titlebar-area-x,--spacing(3))] pe-3 [app-region:drag] *:[app-region:no-drag]">
+        <header className="grid shrink-0 grid-cols-[minmax(135px,1fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-4 border-b ps-[env(titlebar-area-x,--spacing(3))] pe-3 [app-region:drag] *:[app-region:no-drag]">
           <WorkspaceTabs />
           <ProjectWindowTitle />
           <div className="flex min-w-0 justify-end">

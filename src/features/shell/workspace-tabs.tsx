@@ -22,6 +22,7 @@ export function WorkspaceTabs() {
   const running = isJobActive(useMachineSnapshot().job)
   return (
     <Tabs
+      className="@container min-w-0"
       value={isSection(section) ? section : "prepare"}
       onValueChange={(value) => {
         if (isSection(value)) void navigate({ to: `/${value}` })
@@ -29,24 +30,40 @@ export function WorkspaceTabs() {
     >
       <TabsList
         variant="line"
-        className="h-12 max-w-full overflow-x-auto"
+        className="h-12 w-full justify-start gap-0 p-0"
         aria-label="Workspace"
       >
-        <TabsTrigger value="prepare" className="px-4">
+        <TabsTrigger
+          value="prepare"
+          title="Prepare"
+          className="min-w-0 px-0 @[360px]:px-2"
+        >
           <Layers3 />
-          Prepare
+          <span className="sr-only @[360px]:not-sr-only">Prepare</span>
         </TabsTrigger>
-        <TabsTrigger value="patterns" className="px-4">
+        <TabsTrigger
+          value="patterns"
+          title="Patterns"
+          className="min-w-0 px-0 @[360px]:px-2"
+        >
           <Waves />
-          Patterns
+          <span className="sr-only @[360px]:not-sr-only">Patterns</span>
         </TabsTrigger>
-        <TabsTrigger value="facing" className="px-4">
+        <TabsTrigger
+          value="facing"
+          title="Facing"
+          className="min-w-0 px-0 @[360px]:px-2"
+        >
           <Layers />
-          Facing
+          <span className="sr-only @[360px]:not-sr-only">Facing</span>
         </TabsTrigger>
-        <TabsTrigger value="job" className="px-4">
+        <TabsTrigger
+          value="job"
+          title="Job"
+          className="min-w-0 px-0 @[360px]:px-2"
+        >
           <Play />
-          Job
+          <span className="sr-only @[360px]:not-sr-only">Job</span>
           {running && (
             <>
               <span
@@ -57,9 +74,13 @@ export function WorkspaceTabs() {
             </>
           )}
         </TabsTrigger>
-        <TabsTrigger value="device" className="px-4">
+        <TabsTrigger
+          value="device"
+          title="Device"
+          className="min-w-0 px-0 @[360px]:px-2"
+        >
           <Cpu />
-          Device
+          <span className="sr-only @[360px]:not-sr-only">Device</span>
         </TabsTrigger>
       </TabsList>
     </Tabs>
