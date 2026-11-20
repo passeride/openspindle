@@ -270,7 +270,7 @@ export function DevicePanel({
             execute={execute}
           />
           <DeviceOverridesCard
-            device={device}
+            key={snapshot.connection.id ?? "offline"}
             telemetry={telemetry}
             limits={limits}
             pending={pending}

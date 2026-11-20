@@ -193,6 +193,13 @@ export function planMakeraCommand(
         action.enabled ? "M331" : "M332",
         (after) => after.vacuumAuto === action.enabled
       )
+    case "spindleFan":
+      return command(
+        action.percent === 0 ? "M812" : `M811 S${action.percent}`,
+        (after) =>
+          after.spindleAirOn === action.percent > 0 &&
+          after.spindleAirPower === action.percent
+      )
     case "feedOverride":
       return command(
         `M220 S${action.percent}`,
@@ -283,6 +290,12 @@ export const makeraRules: FirmwareRules = {
         return telemetry.vacuumOn !== null
       case "vacuumAuto":
         return telemetry.vacuumAuto !== null
+      case "spindleFan":
+        return (
+          telemetry.spindleAirOn !== null &&
+          telemetry.spindleAirPower !== null &&
+          telemetry.laserMode !== true
+        )
       case "feedOverride":
         return telemetry.feedOverride !== null
       case "spindleOverride":
@@ -329,6 +342,20 @@ export const makeraRules: FirmwareRules = {
         return state === "Alarm"
           ? "Clear the alarm before using this control."
           : null
+      case "spindleFan":
+        if (
+          action.percent === 0 &&
+          (state !== "Idle" ||
+            telemetry.job !== null ||
+            telemetry.spindleOn !== false)
+        )
+          return "The spindle fan can be switched off only while idle with the spindle stopped."
+        // Manual fan power shares the same idle/run/pause admission as overrides.
+        if (telemetry.estop !== false)
+          return "The device must report a released emergency stop first."
+        return ["Idle", "Run", "Pause"].includes(state)
+          ? null
+          : "Spindle fan control requires an idle, running or paused machine."
       case "feedOverride":
       case "spindleOverride":
         if (telemetry.estop === true)

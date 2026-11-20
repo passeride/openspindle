@@ -238,6 +238,7 @@ export class SimulatedZ1 {
   private feedOverride = 100
   private spindleOverride = 100
   private light = false
+  private manualSpindleFan: number | null = null
   private beep = false
   private vacuum = false
   private vacuumPower = 0
@@ -745,10 +746,11 @@ export class SimulatedZ1 {
 
   private diagnose() {
     // Blowing turns the spindle fan, its air, on with the spindle (SpindleControl M3).
-    const air = this.spindleOn && this.blowing
+    const automaticAir = this.spindleOn && this.blowing ? SPINDLE_AIR_POWER : 0
+    const airPower = this.manualSpindleFan ?? automaticAir
     this.send(
       FRAME_TYPES.diagnostics,
-      `{S:${flag(this.spindleOn)},${this.targetRpm}|F:${flag(air)},${air ? SPINDLE_AIR_POWER : 0}|G:${flag(this.light)},${flag(this.beep)},0,${flag(this.vacuum)},${this.vacuumPower}|P:0,0|I:${flag(this.estop)}}`
+      `{S:${flag(this.spindleOn)},${this.targetRpm}|F:${flag(airPower > 0)},${airPower}|G:${flag(this.light)},${flag(this.beep)},0,${flag(this.vacuum)},${this.vacuumPower}|P:0,0|I:${flag(this.estop)}}`
     )
   }
 
@@ -1081,6 +1083,15 @@ export class SimulatedZ1 {
           this.vacuum = false
           this.vacuumPower = 0
         }
+        return true
+      case "811":
+        this.manualSpindleFan = Math.max(
+          0,
+          Math.min(100, word(code, "S") ?? 50)
+        )
+        return true
+      case "812":
+        this.manualSpindleFan = null
         return true
       case "821":
       case "822":

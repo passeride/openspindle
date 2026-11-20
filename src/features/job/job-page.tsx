@@ -41,6 +41,7 @@ import type { MachineAction } from "./job-hooks"
 import { JobSummary } from "./job-stages"
 import { JobTimelineBar } from "./job-timeline"
 import { JobToolbar } from "./job-toolbar"
+import { JobLiveControls } from "./job-live-controls"
 import { followTarget, jobSubject } from "./job-view"
 import type { JobSubject, JobView } from "./job-view"
 import { JobViewer } from "./job-viewer"
@@ -129,6 +130,7 @@ function JobPanel({
       <ScrollArea className="min-h-0 flex-1">
         <div className="flex flex-col gap-3 p-3">
           <JobSummary view={view} subject={subject} />
+          <JobLiveControls />
           {view.kind === "idle" && subject && (
             <JobZProbeOption plate={subject.plate} />
           )}

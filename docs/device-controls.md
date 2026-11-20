@@ -60,6 +60,7 @@ A written command is not a successful command. Without a program stream, success
 | Work light brightness   | `M821 S…` (1–100% mapped to 3–255)                | `ok`, diagnose G light-on flag; firmware does not report the brightness level                                            |
 | Beep                    | `M861` / `M862`                                   | `ok`, diagnose G beep flag                                                                                               |
 | Vacuum                  | `M851 S100` / `M852`                              | `ok`, diagnose G external-output flag                                                                                    |
+| Spindle fan              | `M811 S…` / `M812`                               | diagnose F fan state and percent                                                                                         |
 | Follow spindle          | `M331` / `M332`                                   | `ok`, status S vacuum mode                                                                                               |
 | Feed / spindle override | `M220 S…` / `M223 S…`                             | `ok`, status F / S override                                                                                              |
 | Pause / resume          | `suspend` / `resume`                              | status Pause / Run or Idle                                                                                               |
@@ -67,6 +68,8 @@ A written command is not a successful command. Without a program stream, success
 | Stop                    | realtime `0x18` in an `0xa1` frame                | Alarm                                                                                                                    |
 | Write anchors           | `config-set sd <key> <value>` for each key        | `sd: <key> has been set to <value>`, then every key read back ([stored anchors](stored-anchors.md#changing-the-anchors)) |
 | Store bed setup anchors | `config-set sd openspindle.anchor<n> …`           | each place as above ([stored anchors](stored-anchors.md#bed-setup-anchors-on-the-device))                                |
+
+The **Job** tab exposes feed and spindle override sliders during an active job. **Spindle fan** is available there and under **Device → Accessories**. The sliders send one command when a change is committed and then show the reported value. For the fan, a positive percentage turns it on. Zero switches it off while the machine is idle and the spindle is stopped. The firmware can subsequently change the actual fan power through its cooling and automatic blowing logic. During job streaming, these commands are confirmed by telemetry.
 
 A rejection line fails the command. An unverified command reports that its outcome is unknown and never retries; unverified motion (jog, home, spindle) locks out further commands until Stop is confirmed or the device is connected again. The open TCP connection continues listening and keeps Stop available; fresh status alone does not clear the lockout. A late acknowledgement of an unverified command is swallowed for two seconds.
 

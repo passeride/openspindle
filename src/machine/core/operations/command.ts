@@ -46,7 +46,9 @@ export async function executeCommand(
   if (automaticOff || (brightness && command.onlyIfOn))
     await waitForAutomaticCommandReady(preflight, label)
   let before = await (
-    guardedLight || checksToolSetter ? freshDiagnosticStatus : freshStatus
+    guardedLight || checksToolSetter || command.type === "spindleFan"
+      ? freshDiagnosticStatus
+      : freshStatus
   )(
     preflight,
     "Timed out waiting for fresh device status. No command was sent."

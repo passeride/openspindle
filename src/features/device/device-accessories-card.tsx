@@ -19,6 +19,7 @@ import type {
   Telemetry,
 } from "@/machine/contract"
 import { useMachineSnapshot } from "@/platform/machine"
+import { SpindleFanField } from "./spindle-fan-field"
 import { ControlCard } from "./device-control-card"
 import { DeviceCameraVideoField } from "./device-camera-video-field"
 import { WorkLightBrightnessFields } from "./work-light-brightness-fields"
@@ -79,7 +80,7 @@ export function DeviceAccessoriesCard({
   execute: (action: MachineCommand) => void
 }) {
   const light = useWorkLightControl()
-  const { features } = useMachineSnapshot()
+  const { connection, features } = useMachineSnapshot()
   const busy = pending || light.pending
   const lightAction = telemetry?.lightOn === true ? "light" : "lightBrightness"
   return (
@@ -140,6 +141,13 @@ export function DeviceAccessoriesCard({
           <DeviceVacuumPowerField pending={busy} />
         </FieldGroup>
       </FieldSet>
+      <SpindleFanField
+        key={connection.id ?? "offline"}
+        telemetry={telemetry}
+        pending={busy}
+        reason={reason}
+        execute={execute}
+      />
       {features?.camera === true && features.configuration && (
         <FieldSet>
           <FieldLegend className="flex items-center gap-2">

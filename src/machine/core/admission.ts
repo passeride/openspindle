@@ -120,6 +120,8 @@ function representative(
         key,
         command: { type: key, enabled: telemetry?.vacuumAuto !== true },
       }
+    case "spindleFan":
+      return { key, command: { type: key, percent: 50 } }
     case "feedOverride":
     case "spindleOverride":
       return {
