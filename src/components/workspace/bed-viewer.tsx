@@ -58,7 +58,7 @@ type Props = {
     width: number
   }
 
-  orbit?: { current: OrbitPose | null }
+  orbit?: { current: OrbitPose | null; frame?: HTMLCanvasElement | null }
   layers?: ViewerLayers
   removal?: { readonly plateId: string; readonly grid: RemovalGrid } | null
   plates: ViewerPlate[]
@@ -155,6 +155,22 @@ export function BedViewer({
 
   useEffect(() => {
     if (!container.current) return
+    const host = container.current
+    const previous = orbit?.frame
+    let hasPainted = false
+    let holding = previous != null
+    if (previous) {
+      previous.setAttribute("aria-hidden", "true")
+      previous.className =
+        "pointer-events-none absolute inset-0 z-[2] h-full w-full"
+      host.appendChild(previous)
+      orbit.frame = null
+    }
+    const release = () => {
+      if (!holding) return
+      previous?.remove()
+      holding = false
+    }
     // The scene calls through the ref, so it always reaches the latest handlers.
     const arrangeEvents: ArrangeEvents | undefined = arrange.current && {
       select: (plateId, item) => arrange.current?.select(plateId, item),
@@ -177,14 +193,27 @@ export function BedViewer({
       {
         selectPlate: (id) => select.current(id),
         zoomChange: (value) => zoomChange.current?.(value),
-        error: setError,
+        error: (message) => {
+          release()
+          setError(message)
+        },
+        painted: () => {
+          hasPainted = true
+          release()
+        },
         arrange: arrangeEvents,
       },
       (id) => (models ? models.mesh(id) : Promise.resolve(null))
     )
     sceneRef.current = scene
     return () => {
-      if (orbit) orbit.current = scene.orbitPose()
+      if (orbit && hasPainted) {
+        orbit.current = scene.orbitPose()
+        orbit.frame = scene.captureFrame()
+      } else if (orbit && previous && holding) {
+        orbit.frame = previous
+      }
+      release()
       restored.current = false
       scene.dispose()
       sceneRef.current = null

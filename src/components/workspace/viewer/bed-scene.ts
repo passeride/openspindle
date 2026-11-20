@@ -107,6 +107,7 @@ export type BedSceneEvents = {
   selectPlate: (id: string) => void
   zoomChange: (zoom: number) => void
   error: (message: string) => void
+  painted?: () => void
   /** Selecting and moving setup items; without it, clicks select plates only. */
   arrange?: ArrangeEvents
 }
@@ -585,6 +586,10 @@ export class BedScene {
     this.stage.invalidate()
   }
 
+  captureFrame() {
+    return this.stage.capture()
+  }
+
   orbitPose(): OrbitPose {
     return {
       position: this.camera.position.toArray(),
@@ -767,6 +772,7 @@ export class BedScene {
         : null
     )
     this.pipeline.render()
+    this.events.painted?.()
     this.positionLabels()
     return moving || settling
   }

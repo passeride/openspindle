@@ -202,7 +202,7 @@ export function machiningPrograms(
   const context = keptNcContext(kit)
   return plate.operations.flatMap((operation) => {
     if (operation.source.kind === "facing") {
-      const keepOuts = facingKeepOuts(plate.setup, kit)
+      const keepOuts = facingKeepOuts(plate.setup, kit, operation.source.params)
       if (
         facingEntryFrameIssue(operation.source.params, plate.setup) ||
         facingPocketPaths(operation.source.params, keepOuts).issue

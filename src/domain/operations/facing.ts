@@ -1,3 +1,8 @@
+import {
+  fixtureBounds,
+  isBedKind,
+  namedFixtures,
+} from "../fixtures/definitions"
 import { z } from "zod"
 import type { Tool } from "../tools/tool"
 import { toolKindKey } from "../tools/tool"
@@ -144,10 +149,32 @@ export function facingToolIssue(tool: Tool | undefined): string | null {
 /** Built-in protected footprints translated from the bed to the plate's work coordinates. */
 export function facingKeepOuts(
   setup: PlateSetup,
-  kit: FixtureKit
+  kit: FixtureKit,
+  params: FacingParams
 ): readonly FacingKeepOut[] {
   const [x, y, originZ] = setup.workOrigin
-  return kit.facingKeepOuts.map((area) => ({
+  const fixtureAreas = namedFixtures(setup.fixtures).flatMap(
+    ({ instance, name }): FacingKeepOut[] => {
+      if (
+        isBedKind(instance.definition.kind) ||
+        instance.definition.kind === "wasteboard"
+      )
+        return []
+      const bounds = fixtureBounds(instance)
+      if (!bounds || bounds.max[2] < originZ + params.top - params.removal)
+        return []
+      return [
+        {
+          name,
+          min: [bounds.min[0], bounds.min[1]],
+          max: [bounds.max[0], bounds.max[1]],
+          top: bounds.max[2],
+          margin: 2,
+        },
+      ]
+    }
+  )
+  return [...kit.facingKeepOuts, ...fixtureAreas].map((area) => ({
     ...area,
     min: [area.min[0] - x, area.min[1] - y],
     max: [area.max[0] - x, area.max[1] - y],
@@ -494,7 +521,8 @@ function outsideLayer(
 export function facingNc(
   params: FacingParams,
   tool: number,
-  keepOuts: readonly FacingKeepOut[]
+  keepOuts: readonly FacingKeepOut[],
+  approach: readonly string[] = []
 ): string {
   const p = FacingParamsSchema.parse(params)
   const n = (v: number) => v.toFixed(4)
@@ -507,6 +535,7 @@ export function facingNc(
     "(Spinnvill facing - review setup before Run)",
     "G21 G90 G17 G94",
     `T${tool} M6`,
+    ...approach,
     `S${p.rpm} M3`,
     `G0 Z${n(safe)}`,
   ]
@@ -516,7 +545,7 @@ export function facingNc(
     )
   for (const area of keepOuts)
     lines.push(
-      `(Facing keep-out: ${area.name}; cutter radius plus ${n(area.margin)} mm clearance)`
+      `(Facing keep-out: ${area.name.replace(/[()\r\n]/g, " ")}; cutter radius plus ${n(area.margin)} mm clearance)`
     )
   for (let layer = 1; layer <= layers; layer++) {
     const cutZ = p.top - Math.min(p.removal, layer * p.stepdown)

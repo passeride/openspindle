@@ -97,6 +97,28 @@ export class ViewerStage {
     this.loop.flush()
   }
 
+  capture(): HTMLCanvasElement | null {
+    if (
+      !this.started ||
+      this.disposed ||
+      !this.canvas.width ||
+      !this.canvas.height
+    )
+      return null
+    const image = document.createElement("canvas")
+    image.width = this.canvas.width
+    image.height = this.canvas.height
+    const context = image.getContext("2d")
+    if (!context) return null
+    try {
+      this.loop.flush()
+      context.drawImage(this.canvas, 0, 0)
+      return image
+    } catch {
+      return null
+    }
+  }
+
   dispose() {
     this.disposed = true
     this.observer.disconnect()

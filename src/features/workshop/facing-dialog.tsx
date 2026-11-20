@@ -34,10 +34,7 @@ import type { PlateSetup } from "@/domain/plate/plate"
 import { createPreset } from "@/domain/tools/tool"
 import type { Tool } from "@/domain/tools/tool"
 import { kitForPlate } from "@/domain/fixtures/catalog"
-import {
-  useProbingDraft,
-  useProbingForm,
-} from "@/features/probing/probing-form"
+import { useProbingDraft } from "@/features/probing/probing-form"
 import {
   MeasurementField,
   probingField,
@@ -88,55 +85,49 @@ const ENTRY_FIELDS: typeof FIELDS = [
   { key: "entryDepth", label: "Measured clear depth from top", unit: "mm" },
 ]
 
-function ChipLoadCalculator({
-  tool,
-  params,
-  onApply,
-}: {
-  tool: Tool
-  params: FacingParams
-  onApply: (feed: number) => void
-}) {
-  const [chip, setChip] = useState(0)
-  const [valid, setValid] = useState(false)
-  const form = useProbingForm(
-    { chip: 0 },
-    z.object({ chip: z.number().positive().max(10) }),
-    (value) => setChip(value.chip),
-    setValid
-  )
-  const id = useId()
-  const teeth = tool.flutes ?? tool.geometry.numberOfTeeth
-  const feed = params.rpm * (teeth ?? 0) * chip
-  return (
-    <FieldGroup>
-      {probingField(
-        form,
-        "chip"
-      )((field) => (
-        <MeasurementField
-          id={id}
-          label="Target chip load · from your cutter data"
-          unit="mm/tooth"
-          value={field.value || null}
-          errors={field.errors}
-          disabled={false}
-          onBlur={field.onBlur}
-          onValueChange={(value) => field.onChange(value ?? NaN)}
-        />
-      ))}
-      <Button
-        variant="outline"
-        disabled={
-          !valid || !teeth || params.rpm <= 0 || feed <= 0 || feed > 100000
-        }
-        onClick={() => onApply(feed)}
-      >
-        Use calculated feed
-        {valid && teeth && params.rpm > 0 ? ` · ${feed.toFixed(0)} mm/min` : ""}
-      </Button>
-    </FieldGroup>
-  )
+function materialPreset(
+  tool: Tool | undefined,
+  material: string | undefined,
+  range?: { min: number; max: number } | null
+) {
+  if (!tool || !material) return undefined
+  const key = (name: string) =>
+    name
+      .toLowerCase()
+      .replace(/aluminium/g, "aluminum")
+      .replace(/[^a-z0-9]/g, "")
+  const matches = tool.presets.filter((preset) => {
+    const rpm = preset.rpm ?? 0
+    return (
+      preset.material &&
+      key(preset.material) === key(material) &&
+      rpm > 0 &&
+      (preset.feedRate ?? 0) > 0 &&
+      (preset.plungeFeed ?? 0) > 0 &&
+      (!range || (rpm >= range.min && rpm <= range.max))
+    )
+  })
+  return matches.length === 1 ? matches[0] : undefined
+}
+
+function applyCuttingPreset(
+  params: FacingParams,
+  preset: Tool["presets"][number]
+): FacingParams {
+  return {
+    ...params,
+    rpm: preset.rpm ?? params.rpm,
+    feed: preset.feedRate ?? params.feed,
+    plunge: preset.plungeFeed ?? params.plunge,
+    stepdown:
+      preset.useStepdown === true
+        ? Math.min(params.removal, preset.stepdown ?? params.stepdown)
+        : params.stepdown,
+    stepover:
+      preset.useStepover === true
+        ? Math.min(params.diameter / 2, preset.stepover ?? params.stepover)
+        : params.stepover,
+  }
 }
 
 function FacingFields({
@@ -165,140 +156,166 @@ function FacingFields({
     },
   })
   const id = useId()
+  const primary = new Set(["removal", "rpm", "feed", "plunge"])
+  const measurement = ({
+    key,
+    label,
+    unit,
+    description,
+  }: (typeof FIELDS)[number]) =>
+    probingField(
+      form,
+      key
+    )((field) => (
+      <MeasurementField
+        key={key}
+        id={`${id}-${key}`}
+        label={label}
+        description={description}
+        unit={unit}
+        value={field.value ?? null}
+        errors={field.errors}
+        disabled={false}
+        onBlur={field.onBlur}
+        onValueChange={(v) => {
+          if (key.startsWith("entry") || key === "top")
+            form.setFieldValue("entryConfirmed", false)
+          field.onChange(v ?? NaN)
+        }}
+      />
+    ))
   return (
     <FieldGroup>
-      <Field>
-        <FieldLabel htmlFor={`${id}-pattern`}>Facing pattern</FieldLabel>
-        <form.Field name="pattern">
-          {(field) => (
-            <OptionSelect
-              id={`${id}-pattern`}
-              value={field.state.value ?? "horizontal"}
-              options={[
-                { value: "horizontal", label: "Horizontal · X" },
-                { value: "vertical", label: "Vertical · Y" },
-                { value: "cross-hatch", label: "Cross-hatch · X then Y" },
-              ]}
-              onValueChange={field.handleChange}
-            />
-          )}
-        </form.Field>
-        <FieldDescription>
-          Cross-hatch cuts both directions at the same Z for each depth pass. It
-          does not double the removal.
-        </FieldDescription>
-      </Field>
-      <form.Field name="borderFirst">
-        {(field) => (
-          <Field orientation="horizontal">
-            <Checkbox
-              id={`${id}-border`}
-              checked={field.state.value ?? false}
-              disabled={value.entryMode !== "pocket"}
-              onCheckedChange={(checked) =>
-                field.handleChange(checked === true)
-              }
-            />
-            <FieldLabel htmlFor={`${id}-border`}>
-              Border first · requires a verified cleared pocket
-            </FieldLabel>
+      <div className="grid grid-cols-2 gap-2">
+        {FIELDS.filter(({ key }) => primary.has(key)).map(measurement)}
+      </div>
+      <details
+        className="rounded-md border p-2"
+        open={value.entryMode === "pocket" || undefined}
+      >
+        <summary className="cursor-pointer text-sm font-medium">
+          Area, passes and entry
+        </summary>
+        <FieldGroup className="mt-2">
+          <Field>
+            <FieldLabel htmlFor={`${id}-pattern`}>Facing pattern</FieldLabel>
+            <form.Field name="pattern">
+              {(field) => (
+                <OptionSelect
+                  id={`${id}-pattern`}
+                  value={field.state.value ?? "horizontal"}
+                  options={[
+                    { value: "horizontal", label: "Horizontal · X" },
+                    { value: "vertical", label: "Vertical · Y" },
+                    { value: "cross-hatch", label: "Cross-hatch · X then Y" },
+                  ]}
+                  onValueChange={field.handleChange}
+                />
+              )}
+            </form.Field>
+            <FieldDescription>
+              Cross-hatch cuts both directions at the same Z for each depth
+              pass. It does not double the removal.
+            </FieldDescription>
           </Field>
-        )}
-      </form.Field>
-      <Field>
-        <FieldLabel>Entry method</FieldLabel>
-        <form.Field name="entryMode">
-          {(field) => (
-            <ToggleGroup
-              variant="outline"
-              aria-label="Facing entry method"
-              value={[field.state.value ?? "outside"]}
-              onValueChange={(values) => {
-                const mode = values[0]
-                if (mode !== "outside" && mode !== "pocket") return
-                if (mode === "outside") {
-                  form.setFieldValue("borderFirst", false)
-                  form.setFieldValue("entryX", undefined)
-                  form.setFieldValue("entryY", undefined)
-                  form.setFieldValue("entryDiameter", undefined)
-                  form.setFieldValue("entryDepth", undefined)
-                  form.setFieldValue("entryFrame", undefined)
-                }
-                form.setFieldValue("entryConfirmed", false)
-                field.handleChange(mode)
-              }}
-            >
-              <ToggleGroupItem value="outside">Outside stock</ToggleGroupItem>
-              <ToggleGroupItem value="pocket">Cleared pocket</ToggleGroupItem>
-            </ToggleGroup>
+          <form.Field name="borderFirst">
+            {(field) => (
+              <Field orientation="horizontal">
+                <Checkbox
+                  id={`${id}-border`}
+                  checked={field.state.value ?? false}
+                  disabled={value.entryMode !== "pocket"}
+                  onCheckedChange={(checked) =>
+                    field.handleChange(checked === true)
+                  }
+                />
+                <FieldLabel htmlFor={`${id}-border`}>
+                  Border first · requires a verified cleared pocket
+                </FieldLabel>
+              </Field>
+            )}
+          </form.Field>
+          <Field>
+            <FieldLabel>Entry method</FieldLabel>
+            <form.Field name="entryMode">
+              {(field) => (
+                <ToggleGroup
+                  variant="outline"
+                  aria-label="Facing entry method"
+                  value={[field.state.value ?? "outside"]}
+                  onValueChange={(values) => {
+                    const mode = values[0]
+                    if (mode !== "outside" && mode !== "pocket") return
+                    if (mode === "outside") {
+                      form.setFieldValue("borderFirst", false)
+                      form.setFieldValue("entryX", undefined)
+                      form.setFieldValue("entryY", undefined)
+                      form.setFieldValue("entryDiameter", undefined)
+                      form.setFieldValue("entryDepth", undefined)
+                      form.setFieldValue("entryFrame", undefined)
+                    }
+                    form.setFieldValue("entryConfirmed", false)
+                    field.handleChange(mode)
+                  }}
+                >
+                  <ToggleGroupItem value="outside">
+                    Outside stock
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="pocket">
+                    Cleared pocket
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              )}
+            </form.Field>
+          </Field>
+          {value.entryMode === "pocket" && (
+            <FieldDescription>
+              X/Y and width/depth define the cutter-centre rectangle. The cutter
+              extends beyond it by its radius; corners and the tool-setter patch
+              may remain unfaced. The entire cutter must fit in the pocket
+              before it lowers.
+            </FieldDescription>
           )}
-        </form.Field>
-      </Field>
-      {value.entryMode === "pocket" && (
-        <FieldDescription>
-          X/Y and width/depth define the cutter-centre rectangle. The cutter
-          extends beyond it by its radius; corners and the tool-setter patch may
-          remain unfaced. The entire cutter must fit in the pocket before it
-          lowers.
-        </FieldDescription>
-      )}
-      {[...FIELDS, ...(value.entryMode === "pocket" ? ENTRY_FIELDS : [])].map(
-        ({ key, label, unit, description }) =>
-          probingField(
-            form,
-            key
-          )((field) => (
-            <MeasurementField
-              key={key}
-              id={`${id}-${key}`}
-              label={label}
-              description={description}
-              unit={unit}
-              value={field.value ?? null}
-              errors={field.errors}
-              disabled={false}
-              onBlur={field.onBlur}
-              onValueChange={(v) => {
-                if (key.startsWith("entry") || key === "top")
-                  form.setFieldValue("entryConfirmed", false)
-                field.onChange(v ?? NaN)
-              }}
-            />
-          ))
-      )}
-      {value.entryMode === "pocket" && (
-        <form.Field name="entryConfirmed">
-          {(field) => (
-            <Field orientation="horizontal">
-              <Checkbox
-                id={`${id}-entry-confirmed`}
-                checked={
-                  field.state.value === true &&
-                  !!setup &&
-                  !facingEntryFrameIssue(value, setup)
-                }
-                disabled={!setup}
-                onCheckedChange={(checked) => {
-                  if (!setup) return
-                  form.setFieldValue(
-                    "entryFrame",
-                    structuredClone({
-                      deviceId: setup.deviceId,
-                      workOrigin: setup.workOrigin,
-                      anchors: setup.anchors,
-                    })
-                  )
-                  field.handleChange(checked === true)
-                }}
-              />
-              <FieldLabel htmlFor={`${id}-entry-confirmed`}>
-                I checked this pocket's position, opening and clear depth on the
-                installed bed, including screws, pins and metal underneath.
-              </FieldLabel>
-            </Field>
+          {[
+            ...FIELDS.filter(({ key }) => !primary.has(key)),
+            ...(value.entryMode === "pocket" ? ENTRY_FIELDS : []),
+          ].map(measurement)}
+          {value.entryMode === "pocket" && (
+            <form.Field name="entryConfirmed">
+              {(field) => (
+                <Field orientation="horizontal">
+                  <Checkbox
+                    id={`${id}-entry-confirmed`}
+                    checked={
+                      field.state.value === true &&
+                      !!setup &&
+                      !facingEntryFrameIssue(value, setup)
+                    }
+                    disabled={!setup}
+                    onCheckedChange={(checked) => {
+                      if (!setup) return
+                      form.setFieldValue(
+                        "entryFrame",
+                        structuredClone({
+                          deviceId: setup.deviceId,
+                          workOrigin: setup.workOrigin,
+                          anchors: setup.anchors,
+                        })
+                      )
+                      field.handleChange(checked === true)
+                    }}
+                  />
+                  <FieldLabel htmlFor={`${id}-entry-confirmed`}>
+                    I checked this pocket's position, opening and clear depth on
+                    the installed bed, including screws, pins and metal
+                    underneath.
+                  </FieldLabel>
+                </Field>
+              )}
+            </form.Field>
           )}
-        </form.Field>
-      )}
+        </FieldGroup>
+      </details>
     </FieldGroup>
   )
 }
@@ -340,10 +357,23 @@ export function FacingEditor({
       entry.number ===
       operation?.tools.find((binding) => binding.local === source?.tool)?.plate
   )?.toolId
+  const material = plate?.setup.stock?.material
+  const range = plate ? kitForPlate(plate).spindleRange : null
+  const compatible = tools.filter((tool) => !facingToolIssue(tool))
+  const onPlate = compatible.filter((tool) =>
+    plate?.tools.some((entry) => entry.toolId === tool.id)
+  )
+  const available = [
+    ...onPlate,
+    ...compatible.filter((tool) => !onPlate.includes(tool)),
+  ]
+  const initialTool =
+    onPlate.find((tool) => materialPreset(tool, material, range)) ??
+    onPlate.at(0) ??
+    compatible.find((tool) => materialPreset(tool, material, range)) ??
+    available.at(0)
   const [toolId, setToolId] = useState(
-    operationId !== undefined
-      ? (existingToolId ?? "")
-      : (tools.find((tool) => !facingToolIssue(tool))?.id ?? "")
+    operationId !== undefined ? (existingToolId ?? "") : (initialTool?.id ?? "")
   )
   const tool = tools.find((item) => item.id === toolId)
   const [params, setParams] = useState<FacingParams>(() => {
@@ -351,16 +381,7 @@ export function FacingEditor({
     const stock = plate?.setup.stock
     const origin = plate?.setup.workOrigin ?? [0, 0, 0]
     const anchor = plate?.setup.stockAnchor ?? [0, 0, 0]
-    const matching =
-      tool?.presets.filter(
-        (preset) => stock && preset.material === stock.material
-      ) ?? []
-    const preset = matching.length === 1 ? matching[0] : undefined
-    const range = plate && kitForPlate(plate).spindleRange
-    const rpm = preset?.rpm ?? 0
-    const usePreset =
-      rpm > 0 && (!range || (rpm >= range.min && rpm <= range.max))
-    return {
+    const initial: FacingParams = {
       x: anchor[0] - origin[0],
       y: anchor[1] - origin[1],
       width: stock?.width ?? 100,
@@ -371,10 +392,12 @@ export function FacingEditor({
       stepdown: 0.1,
       stepover: (tool?.diameter ?? 1) / 2,
       clearance: 5,
-      rpm: usePreset ? rpm : 0,
-      feed: usePreset ? (preset?.feedRate ?? 0) : 0,
-      plunge: usePreset ? (preset?.plungeFeed ?? 0) : 0,
+      rpm: 0,
+      feed: 0,
+      plunge: 0,
     }
+    const preset = materialPreset(tool, material, range)
+    return preset ? applyCuttingPreset(initial, preset) : initial
   })
   const [valid, setValid] = useState(
     FacingParamsSchema.safeParse(params).success
@@ -383,7 +406,9 @@ export function FacingEditor({
     onPreview?.(params)
   }, [onPreview, params])
   const draft = useProbingDraft(params, setParams)
-  const [presetId, setPresetId] = useState("")
+  const [presetId, setPresetId] = useState(() =>
+    operationId ? "" : (materialPreset(tool, material, range)?.id ?? "")
+  )
   const [presetName, setPresetName] = useState("")
   const presetForm = useForm({
     defaultValues: { name: "" },
@@ -396,12 +421,14 @@ export function FacingEditor({
   })
   const presetNameId = useId()
   const issue = facingToolIssue(tool)
+  const matchingPreset = materialPreset(tool, material, range)
   const preset = tool?.presets.find((item) => item.id === presetId)
   const kit = plate ? kitForPlate(plate) : null
+  const keepOuts = plate && kit ? facingKeepOuts(plate.setup, kit, params) : []
   const pocketIssue =
     plate && kit
       ? (facingEntryFrameIssue(params, plate.setup) ??
-        facingPocketPaths(params, facingKeepOuts(plate.setup, kit)).issue)
+        facingPocketPaths(params, keepOuts).issue)
       : null
   const stock = plate?.setup.stock
   const firstTarget =
@@ -534,21 +561,11 @@ export function FacingEditor({
   )
   const fields = (
     <FieldGroup>
-      <FieldDescription>
-        Creates an editable rectangular raster in work coordinates. Choose
-        outside-stock entry or a measured clear pocket. Review the generated
-        program and clamp clearances on Job before Run. This does not set
-        physical work Z or change the stock model.
-      </FieldDescription>
-      {!!kit?.facingKeepOuts.length && (
+      {keepOuts.length > 0 && (
         <FieldDescription>
-          Automatically avoids{" "}
-          {kit.facingKeepOuts.map((area) => area.name.toLowerCase()).join(", ")}
-          , including the cutter radius and at least{" "}
-          {Math.max(...kit.facingKeepOuts.map((area) => area.margin))} mm
-          clearance. Pocket entry connects rows at cutting feed around protected
-          areas; travel clears the modeled equipment top. The protected patch
-          stays unfaced.
+          Protected:{" "}
+          {[...new Set(keepOuts.map((area) => area.name))].join(", ")}. The
+          toolpath leaves these areas uncut.
         </FieldDescription>
       )}
       {!plate && (
@@ -594,26 +611,34 @@ export function FacingEditor({
         </div>
       )}
       <Field>
-        <FieldLabel>Cutter</FieldLabel>
+        <FieldLabel>Tool</FieldLabel>
         <OptionSelect
           value={toolId}
           disabled={!!operation}
-          options={tools
-            .filter((item) => !facingToolIssue(item))
-            .map((item) => ({
-              value: item.id,
-              label: `${item.name} · Ø${item.diameter} mm`,
-            }))}
+          options={available.map((item) => ({
+            value: item.id,
+            label: `${onPlate.includes(item) ? "On plate · " : ""}${item.name} · Ø${item.diameter} mm`,
+          }))}
           onValueChange={(id) => {
             setToolId(id)
-            setPresetId("")
-            const diameter = tools.find((t) => t.id === id)?.diameter ?? 1
-            const next = {
+            const selectedTool = tools.find((t) => t.id === id)
+            const matching = materialPreset(selectedTool, material, range)
+            setPresetId(matching?.id ?? "")
+            const diameter = selectedTool?.diameter ?? 1
+            const geometry = {
               ...params,
               diameter,
               stepover: Math.min(params.stepover, diameter / 2),
               entryConfirmed: false,
             }
+            const next = matching
+              ? applyCuttingPreset(geometry, matching)
+              : {
+                  ...geometry,
+                  rpm: 0,
+                  feed: 0,
+                  plunge: 0,
+                }
             setParams(next)
             setValid(FacingParamsSchema.safeParse(next).success)
           }}
@@ -646,51 +671,50 @@ export function FacingEditor({
         </Button>
       )}
       <FieldDescription>
-        Feeds and speeds assistant: load cutting data supplied for your cutter
-        and material, or enter your own. These values require operator review.
-        Imported G-code keeps its original cutting data.
-        {kit?.spindleRange &&
-          ` This machine's spindle range is ${kit.spindleRange.min}–${kit.spindleRange.max} rpm.`}
+        {material ? `Stock: ${material}` : "Stock material not set"}
+        {presetId && preset
+          ? ` · Preset: ${preset.name}`
+          : " · No cutting preset applied"}
       </FieldDescription>
-      <Field>
-        <FieldLabel>Library cutting preset</FieldLabel>
+      {matchingPreset && presetId !== matchingPreset.id && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            const next = applyCuttingPreset(params, matchingPreset)
+            setPresetId(matchingPreset.id)
+            setParams(next)
+            setValid(FacingParamsSchema.safeParse(next).success)
+          }}
+        >
+          Use material preset · {matchingPreset.name}
+        </Button>
+      )}
+      <details className="rounded-md border p-2">
+        <summary className="cursor-pointer text-sm font-medium">
+          Choose another cutting preset
+        </summary>
         <OptionSelect
           value={presetId}
           options={[
             { value: "", label: "Choose a preset" },
             ...(tool?.presets.map((item) => ({
               value: item.id,
-              label: `${item.name}${item.material ? ` · ${item.material}` : ""}`,
+              label: item.material
+                ? `${item.name} · ${item.material}`
+                : item.name,
             })) ?? []),
           ]}
-          onValueChange={setPresetId}
+          onValueChange={(id) => {
+            setPresetId(id)
+            const selectedPreset = tool?.presets.find((item) => item.id === id)
+            if (!selectedPreset) return
+            const next = applyCuttingPreset(params, selectedPreset)
+            setParams(next)
+            setValid(FacingParamsSchema.safeParse(next).success)
+          }}
         />
-      </Field>
-      <Button
-        variant="outline"
-        disabled={!preset}
-        onClick={() => {
-          if (!preset) return
-          const next = {
-            ...params,
-            rpm: preset.rpm ?? 0,
-            feed: preset.feedRate ?? 0,
-            plunge: preset.plungeFeed ?? 0,
-            stepdown:
-              preset.useStepdown === true
-                ? (preset.stepdown ?? params.stepdown)
-                : params.stepdown,
-            stepover:
-              preset.useStepover === true
-                ? (preset.stepover ?? params.stepover)
-                : params.stepover,
-          }
-          setValid(FacingParamsSchema.safeParse(next).success)
-          setParams(next)
-        }}
-      >
-        Apply preset to facing parameters
-      </Button>
+      </details>
       <FacingFields
         key={`${toolId}-${draft.key}`}
         value={params}
@@ -790,41 +814,35 @@ export function FacingEditor({
           }}
         />
       )}
-      {tool && valid && (
-        <ChipLoadCalculator
-          tool={tool}
-          params={params}
-          onApply={(feed) => {
-            const next = { ...params, feed }
-            setParams(next)
-            setValid(FacingParamsSchema.safeParse(next).success)
-          }}
-        />
-      )}
-      <Field>
-        <FieldLabel htmlFor={presetNameId}>
-          Save these cutting values as a preset
-        </FieldLabel>
-        <presetForm.Field name="name">
-          {(field) => (
-            <Input
-              id={presetNameId}
-              value={field.state.value}
-              onChange={(event) => field.handleChange(event.target.value)}
-              onBlur={field.handleBlur}
-              placeholder="Name for this cutter and material"
-              maxLength={200}
-            />
-          )}
-        </presetForm.Field>
-      </Field>
-      <Button
-        variant="outline"
-        disabled={!tool || !valid || !presetName.trim()}
-        onClick={savePreset}
-      >
-        Save named cutting preset
-      </Button>
+      <details className="rounded-md border p-2">
+        <summary className="cursor-pointer text-sm font-medium">
+          Save a cutting preset
+        </summary>
+        <Field>
+          <FieldLabel htmlFor={presetNameId}>
+            Save these cutting values as a preset
+          </FieldLabel>
+          <presetForm.Field name="name">
+            {(field) => (
+              <Input
+                id={presetNameId}
+                value={field.state.value}
+                onChange={(event) => field.handleChange(event.target.value)}
+                onBlur={field.handleBlur}
+                placeholder="Name for this cutter and material"
+                maxLength={200}
+              />
+            )}
+          </presetForm.Field>
+        </Field>
+        <Button
+          variant="outline"
+          disabled={!tool || !valid || !presetName.trim()}
+          onClick={savePreset}
+        >
+          Save named cutting preset
+        </Button>
+      </details>
       {!!operation && (
         <Button
           variant="outline"

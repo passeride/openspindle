@@ -1,3 +1,5 @@
+import { facingKeepOuts } from "@/domain/operations/facing"
+import { kitForPlate } from "@/domain/fixtures/catalog"
 import { useMemo, useState } from "react"
 import type { FacingParams } from "@/domain/operations/facing"
 import { PreparePage } from "@/features/prepare/prepare-page"
@@ -87,10 +89,65 @@ function FacingRoute() {
       [x, y + d],
     ])
       depth.push(cx, cy, top, cx, cy, bottom)
+    const protectedAreas = facingKeepOuts(
+      plate.setup,
+      kitForPlate(plate),
+      p
+    ).flatMap((area) => {
+      const pad = p.diameter / 2 + area.margin
+      const left = Math.max(x, ox + area.min[0] - pad)
+      const right = Math.min(x + w, ox + area.max[0] + pad)
+      const front = Math.max(y, oy + area.min[1] - pad)
+      const back = Math.min(y + d, oy + area.max[1] + pad)
+      if (left >= right || front >= back) return []
+      return [
+        left,
+        front,
+        top,
+        right,
+        front,
+        top,
+        right,
+        front,
+        top,
+        right,
+        back,
+        top,
+        right,
+        back,
+        top,
+        left,
+        back,
+        top,
+        left,
+        back,
+        top,
+        left,
+        front,
+        top,
+        left,
+        front,
+        top,
+        right,
+        back,
+        top,
+        right,
+        front,
+        top,
+        left,
+        back,
+        top,
+      ]
+    })
     return {
       plateId: plate.id,
       width: 2,
       strokes: [
+        {
+          color: "#ff5267",
+          through: true,
+          positions: new Float32Array(protectedAreas),
+        },
         { color: "#ffc62c", positions: new Float32Array(grid) },
         { color: "#fb8230", through: true, positions: new Float32Array(depth) },
       ],

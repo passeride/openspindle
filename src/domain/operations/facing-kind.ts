@@ -30,7 +30,7 @@ export const facingKind: OperationKind<"facing"> = {
     const tool = tools.find((candidate) => candidate.id === id)
     let issue = facingToolIssue(tool)
     let fix: QuickFix = { kind: "edit-operation", operationId: operation.id }
-    const keepOuts = facingKeepOuts(plate.setup, kit)
+    const keepOuts = facingKeepOuts(plate.setup, kit, p)
     if (!issue && keepOuts.length && !workOriginOnMachine(plate.setup)) {
       issue =
         "Place work XY relative to a stored anchor so the automatic facing keep-outs can be located."
@@ -96,7 +96,7 @@ export const facingKind: OperationKind<"facing"> = {
         })
       )
     return ok({
-      nc: facingNc(p, operation.source.tool, keepOuts),
+      nc: facingNc(p, operation.source.tool, keepOuts, kit.patternApproach),
       policy: PLAIN_NC,
       reviewLines: [],
     })
