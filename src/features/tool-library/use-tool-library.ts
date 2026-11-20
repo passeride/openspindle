@@ -45,6 +45,8 @@ export interface ToolLibraryOptions {
   recommendedKinds?: readonly string[]
   /** Choosing a tool for a caller: deleting the selected tool selects no other. */
   selectionOnly?: boolean
+  /** Explains why the caller cannot use the selected tool. */
+  selectionIssue?: (tool: Tool) => string | null
 }
 
 const NO_KINDS: readonly string[] = []
@@ -104,6 +106,7 @@ export function useToolLibrary({
   onClose,
   recommendedKinds = NO_KINDS,
   selectionOnly = false,
+  selectionIssue,
 }: ToolLibraryOptions) {
   const workspace = useWorkspaceStore()
   const host = useHost()
@@ -324,6 +327,12 @@ export function useToolLibrary({
       if (!editing) return
       const { id } = editing
       const finish: LibraryAction = (library) => {
+        const chosen = library.find((tool) => tool.id === id) ?? current
+        const issue = chosen && selectionIssue?.(chosen)
+        if (issue) {
+          setFeedback({ ...NO_FEEDBACK, errors: [issue] })
+          return
+        }
         // A catalog tool is copied into the library the first time it is used.
         if (catalog && current && !library.some((tool) => tool.id === id))
           onChange([...library, structuredClone(current)])
