@@ -266,7 +266,7 @@ export function bindTools(
   const table = plate.tools.map((tool) => ({ ...tool }))
   const used = new Set(table.map((tool) => tool.number))
   const bindings: Binding[] = []
-  for (const local of locals) {
+  for (const local of new Set(locals)) {
     const existing = operation.tools.find((binding) => binding.local === local)
     if (existing && table.some((tool) => sameNumber(tool, existing.plate))) {
       bindings.push(existing)

@@ -28,7 +28,8 @@ The eye buttons hide layers in the toolpath preview. All layers still
 participate in G-code generation and material removal.
 
 Add another **Pattern** layer to combine independent formulae, sliders and
-cutting settings. **Circle mask** protects a round area anywhere in XY.
+cutting settings. Layers using the same tool number share one tool binding.
+**Circle mask** protects a round area anywhere in XY.
 **Dial numeral mask** places 1–12 in the selected local font on a ring.
 These layers leave material uncut. The generator splits engraving strokes
 at the mask and retracts across the gap. Set the mask clearance to at least

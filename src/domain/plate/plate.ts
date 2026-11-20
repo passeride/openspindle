@@ -222,7 +222,26 @@ export const PlateSchema = z
     name: PlateNameSchema,
     setup: PlateSetupSchema,
     tools: z.array(PlateToolSchema).max(100),
-    operations: z.array(OperationSchema).max(100),
+    operations: z
+      .array(OperationSchema)
+      .max(100)
+      .transform((operations) =>
+        operations.map((operation) => {
+          if (operation.source.kind !== "pattern") return operation
+          // Older layered patterns could repeat the same local-to-plate mapping.
+          // Keep conflicting mappings for plateIssues to report.
+          const seen = new Set<string>()
+          const tools = operation.tools.filter(({ local, plate }) => {
+            const key = `${local}:${plate}`
+            if (seen.has(key)) return false
+            seen.add(key)
+            return true
+          })
+          return tools.length === operation.tools.length
+            ? operation
+            : { ...operation, tools }
+        })
+      ),
     groups: z.array(GroupSchema).max(500),
     notices: z.array(PlateNoticeSchema).max(NOTICE_LIMIT),
     example: z.boolean(),
