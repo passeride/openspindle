@@ -161,11 +161,12 @@ const toSetting = (value: number) => Number(settingText(value))
  * remove one. Every value here is at most 8 characters longer than another, and the key with
  * its value stays within the 130 characters of a line the firmware reads.
  */
+// Keep the persisted key and both reply patterns on the same namespace.
 const addedKey = (slot: number) => `openspindle.anchor${slot + 3}`
 const ADDED_REPLY =
-  /^(sd|cached): (spinnvill\.anchor\d+) is (?:set to (.*)|not in config)$/
+  /^(sd|cached): (openspindle\.anchor\d+) is (?:set to (.*)|not in config)$/
 const ADDED_SET_REPLY =
-  /^sd: (spinnvill\.anchor\d+) (?:has been set to (.*)|not enough space to overwrite existing key\/value)$/
+  /^sd: (openspindle\.anchor\d+) (?:has been set to (.*)|not enough space to overwrite existing key\/value)$/
 const NUMBER = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/
 /** A free place's value. */
 const FREE = "-"
