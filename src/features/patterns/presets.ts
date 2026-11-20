@@ -84,7 +84,7 @@ export const PATTERN_PRESETS: readonly PatternPreset[] = [
   preset("turbine", "Turbine", "Curved radial spokes like a machined rotor", {
     x: "(inner+(radius-inner)*t)*cos(tau*i/n+twist*t)",
     y: "(inner+(radius-inner)*t)*sin(tau*i/n+twist*t)",
-    z: "-depth*t",
+    z: "-depth*t*t",
     tMax: 1,
     samples: 90,
     paths: 72,

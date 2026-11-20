@@ -18,6 +18,8 @@ turbine, Archimedean spirals, Flinqué waves, basketweave, Clous de Paris,
 perlage and Grain d'orge**. They are engraving _paths_, not solid-model
 pockets or a simulated rose-engine cutter. Tool radius and actual decorative
 groove geometry depend on the installed cutter.
+Turbine starts at Z0 at the inner radius and deepens quadratically toward
+the outer radius, where it reaches the selected depth.
 
 The 3D preview uses the same orbit, pan, zoom and SpaceMouse navigation as
 Prepare and Job. Use the view toolbar for top, front, perspective and fit.
