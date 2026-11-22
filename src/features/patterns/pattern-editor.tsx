@@ -1,10 +1,12 @@
 import { SpeedsFeeds } from "@/features/workshop/speeds-feeds"
 import { useEffect, useRef, useState } from "react"
-import { Copy, Download, Plus, Trash2 } from "lucide-react"
+import { Copy, Download, Plus, Trash2, Upload } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Slider } from "@/components/ui/slider"
 import { Textarea } from "@/components/ui/textarea"
+import { PatternSpecSchema } from "@/domain/operations/pattern"
 import type { PatternSpec } from "@/domain/operations/pattern"
 import { PatternPreview } from "./pattern-preview"
 import { PatternLayerControls } from "./pattern-layer-controls"
@@ -60,6 +62,9 @@ export function PatternEditor({ initial, onApply, libraryCutting }: Props) {
   )
   const [selected, setSelected] = useState(0)
   const [hidden, setHidden] = useState<ReadonlySet<number>>(() => new Set())
+  const jsonInput = useRef<HTMLInputElement>(null)
+  const jsonRead = useRef(0)
+  const [jsonProblem, setJsonProblem] = useState<string | null>(null)
   const workerRef = useRef<Worker | null>(null)
   const request = useRef(0)
   useEffect(() => {
@@ -152,15 +157,36 @@ export function PatternEditor({ initial, onApply, libraryCutting }: Props) {
         i === index ? { ...value, ...patch } : value
       ),
     })
-  const save = () => {
-    if (!output) return
-    const blob = new Blob([output.generated.gcode], { type: "text/plain" })
-    const url = URL.createObjectURL(blob)
+  const importJson = async (file: File) => {
+    const id = ++jsonRead.current
+    setJsonProblem(null)
+    try {
+      if (file.size > 128 * 1024)
+        throw new Error("Choose a pattern JSON file of up to 128 KiB.")
+      const text = await file.text()
+      if (id !== jsonRead.current) return
+      const parsed = PatternSpecSchema.safeParse(JSON.parse(text))
+      if (!parsed.success) {
+        const issue = parsed.error.issues[0]
+        const field = issue.path.join(".") || "pattern"
+        throw new Error(`${field}: ${issue.message}`)
+      }
+      setSelected(0)
+      setHidden(new Set())
+      setParamName("")
+      changeDocument(parsed.data)
+    } catch (error) {
+      if (id === jsonRead.current)
+        setJsonProblem(error instanceof Error ? error.message : String(error))
+    }
+  }
+  const download = (filename: string, content: string, type: string) => {
+    const url = URL.createObjectURL(new Blob([content], { type }))
     const anchor = window.document.createElement("a")
     anchor.href = url
-    anchor.download = "spinnvill-pattern.gcode"
+    anchor.download = filename
     anchor.click()
-    URL.revokeObjectURL(url)
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
   return (
     <div className="flex h-full min-h-0 w-full flex-col gap-3 overflow-hidden p-3">
@@ -205,7 +231,14 @@ export function PatternEditor({ initial, onApply, libraryCutting }: Props) {
             size="sm"
             variant="outline"
             disabled={!output || pending}
-            onClick={save}
+            onClick={() => {
+              if (output)
+                download(
+                  "spinnvill-pattern.gcode",
+                  output.generated.gcode,
+                  "text/plain"
+                )
+            }}
           >
             <Download /> G-code
           </Button>
@@ -213,6 +246,50 @@ export function PatternEditor({ initial, onApply, libraryCutting }: Props) {
       </div>
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(285px,360px)_minmax(0,1fr)] gap-3">
         <div className="flex min-h-0 flex-col gap-4 overflow-y-auto rounded-lg border p-3">
+          <div className="flex flex-wrap gap-2">
+            <Input
+              ref={jsonInput}
+              type="file"
+              hidden
+              accept=".json,application/json"
+              aria-label="Choose pattern JSON"
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0]
+                event.currentTarget.value = ""
+                if (file) void importJson(file)
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => jsonInput.current?.click()}
+            >
+              <Upload data-icon="inline-start" /> Import JSON
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!output}
+              onClick={() => {
+                if (output) {
+                  download(
+                    "spinnvill-pattern.json",
+                    JSON.stringify(document, null, 2) + "\n",
+                    "application/json"
+                  )
+                }
+              }}
+            >
+              <Download data-icon="inline-start" /> Export JSON
+            </Button>
+          </div>
+          {jsonProblem && (
+            <Alert variant="destructive">
+              <AlertDescription>{jsonProblem}</AlertDescription>
+            </Alert>
+          )}
           <PatternLayerControls
             spec={document}
             selected={selected}

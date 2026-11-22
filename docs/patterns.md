@@ -53,6 +53,14 @@ In a Pattern operation, **Apply toolpath** saves the layer settings and
 generated NC together. The standalone editor can copy or download the
 combined G-code.
 
+## Pattern JSON
+
+Use **Export JSON** to save the current pattern as an editable recipe. The file
+contains its formulae, parameters, layers, masks and cutting settings. Use
+**Import JSON** in the Patterns editor to open a recipe from another project or
+a tool that uses the same format, such as the Noteriv plugin. Import loads the
+recipe into the editor. **Apply toolpath** saves it to the selected operation.
+
 ## Standalone
 
 The engine in `patterns/engine` is a small Rust crate. Native usage:
